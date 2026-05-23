@@ -32,7 +32,7 @@ html,body{
 
 .left{
     display:flex;
-    gap:8px;
+    gap:6px;
 }
 
 .time{
@@ -112,15 +112,29 @@ const input = document.getElementById("input");
 let username = "anon";
 let admin = false;
 
-/* ID */
+/* FIXED: per-tab color restored */
 const tabId = Math.random().toString(16).slice(2);
+
+function colorFromId(id){
+let hash = 0;
+for(let i=0;i<id.length;i++){
+hash = id.charCodeAt(i) + ((hash<<5)-hash);
+}
+const colors = [
+"#00ff66","#66aaff","#ff6666",
+"#ffcc00","#cc66ff","#66ffcc","#ff66aa"
+];
+return colors[Math.abs(hash)%colors.length];
+}
+
+const userColor = colorFromId(tabId);
 
 /* time */
 function time(){
 return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
 }
 
-/* hidden command */
+/* commands */
 function handleCommands(text){
 
 if(text.startsWith("?name ")){
@@ -129,29 +143,28 @@ return true;
 }
 
 if(text.startsWith("?proveownership ")){
-const code = text.split(" ")[1];
-if(code === "ABCXY"){
+if(text.split(" ")[1] === "ABCXY"){
 admin = true;
-alert("Admin mode enabled");
+alert("Admin enabled");
 }
 return true;
 }
 
 if(text === "?help"){
-const help =
+addLocal(
 `Commands:
 
 - ?name <name> Sets your name
-- ?help Shows this help menu`;
-
-addLocal(help,"system");
+- ?help Shows this help menu`,
+"system"
+);
 return true;
 }
 
 return false;
 }
 
-/* local system message */
+/* local message */
 function addLocal(text,name){
 const div = document.createElement("div");
 div.className="msg";
@@ -169,6 +182,7 @@ div.appendChild(t);
 messages.appendChild(div);
 }
 
+/* send */
 function send(){
 
 const text = input.value.trim();
@@ -182,13 +196,14 @@ return;
 push(messagesRef,{
 text,
 name:username,
+color:userColor,
 time:time()
 });
 
 input.value="";
 }
 
-document.getElementById("send").onclick = send;
+document.getElementById("send").onclick=send;
 
 input.addEventListener("keydown",(e)=>{
 if(e.key==="Enter") send();
@@ -210,7 +225,16 @@ div.className="msg";
 
 const left = document.createElement("div");
 
-left.textContent = `<${msg.name}> ${msg.text}`;
+/* 🔥 COLOR RESTORED HERE */
+const nameSpan = document.createElement("span");
+nameSpan.textContent = `<${msg.name}> `;
+nameSpan.style.color = msg.color || "#ffffff";
+
+const textSpan = document.createElement("span");
+textSpan.textContent = msg.text;
+
+left.appendChild(nameSpan);
+left.appendChild(textSpan);
 
 const right = document.createElement("div");
 right.style.display="flex";
@@ -219,7 +243,7 @@ const t = document.createElement("span");
 t.className="time";
 t.textContent = msg.time;
 
-/* admin controls */
+/* admin tools */
 if(admin){
 
 const del = document.createElement("span");
