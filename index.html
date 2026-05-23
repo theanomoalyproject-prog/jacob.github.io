@@ -123,6 +123,31 @@ if(!userId){
 
 let username=getCookie("username")||"anon";
 
+/* ---------------- TYPE SOUND ---------------- */
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function keySound(){
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(120 + Math.random()*80, audioCtx.currentTime);
+
+    gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.05);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.05);
+}
+
+/* unlock audio on first interaction */
+window.addEventListener("click", () => audioCtx.resume(), { once:true });
+window.addEventListener("keydown", () => audioCtx.resume(), { once:true });
+
 /* ---------------- HELPERS ---------------- */
 
 function time(){
@@ -188,7 +213,6 @@ if(text.startsWith("?name ")){
     return true;
 }
 
-/* HELP (FORMATTED EXACTLY) */
 if(text==="?help"){
     createMessage(
         "system",
@@ -201,12 +225,10 @@ if(text==="?help"){
     return true;
 }
 
-/* PRIVATE MESSAGE */
 if(text.startsWith("?msg ")){
     const parts=text.split(" ");
     const target=parts[1]?.toLowerCase();
     const msg=parts.slice(2).join(" ");
-
     if(!target||!msg) return true;
 
     push(messagesRef,{
@@ -250,6 +272,7 @@ document.getElementById("send").onclick=send;
 
 input.addEventListener("keydown",(e)=>{
     if(e.key==="Enter") send();
+    if(e.key.length===1) keySound();
 });
 
 document.getElementById("clear").onclick=()=>{
