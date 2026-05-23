@@ -1,3 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+html,body{
+    margin:0;
+    background:black;
+    overflow:hidden;
+    font-family:"Courier New",monospace;
+}
+
+/* messages */
+#messages{
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    bottom:60px;
+    overflow-y:auto;
+    padding:8px;
+    font-size:clamp(14px,4vw,20px);
+    color:white;
+    white-space:pre-wrap;
+}
+
+/* input */
+#input{
+    position:absolute;
+    bottom:0;
+    left:0;
+    width:65%;
+    height:50px;
+    border:none;
+    outline:none;
+    background:black;
+    color:#00ff66;
+    font-family:"Courier New",monospace;
+    font-size:clamp(14px,4vw,20px);
+    padding-left:8px;
+    caret-color:#00ff66;
+}
+
+button{
+    position:absolute;
+    bottom:0;
+    height:50px;
+    border:none;
+    font-family:"Courier New",monospace;
+}
+
+#send{
+    right:15%;
+    width:15%;
+    background:#00aa44;
+    color:black;
+}
+
+#clear{
+    right:0;
+    width:15%;
+    background:#aa0000;
+    color:white;
+}
+</style>
+</head>
+
+<body>
+
+<div id="messages"></div>
+
+<input id="input" autocomplete="off">
+
+<button id="send">SEND</button>
+<button id="clear">CLEAR</button>
+
+<script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, remove }
 from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
@@ -91,10 +172,14 @@ onChildAdded(messagesRef,(data)=>{
     const text = msg.text || "";
     const color = msg.color || "#ffffff";
 
-    /* EXACT FORMAT RESTORED */
     div.innerHTML =
         `<span style="color:${color}"><${name}></span> ${text}`;
 
     messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
 });
+
+</script>
+
+</body>
+</html>
