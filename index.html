@@ -12,43 +12,7 @@ html,body{
     overflow:hidden;
 }
 
-/* LOGIN */
-#login{
-    position:absolute;
-    inset:0;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    gap:10px;
-    color:white;
-}
-
-input{
-    background:black;
-    border:1px solid #333;
-    color:white;
-    padding:10px;
-    font-family:"Courier New",monospace;
-    width:220px;
-}
-
-button{
-    padding:10px;
-    border:none;
-    font-family:"Courier New",monospace;
-    cursor:pointer;
-}
-
-#loginBtn{background:#00aa44;}
-#registerBtn{background:#666;}
-#skipBtn{background:#333;color:white;}
-
-/* CHAT */
-#chat{
-    display:none;
-}
-
+/* messages */
 #messages{
     position:absolute;
     top:0;
@@ -67,8 +31,13 @@ button{
     margin-bottom:4px;
 }
 
-.time{color:gray;font-size:12px;}
+.time{
+    color:gray;
+    font-size:12px;
+    white-space:nowrap;
+}
 
+/* input */
 #input{
     position:absolute;
     bottom:0;
@@ -76,27 +45,32 @@ button{
     width:65%;
     height:50px;
     background:black;
-    color:white;
     border:none;
     outline:none;
+    color:white;
+    font-family:"Courier New",monospace;
+    padding-left:8px;
+    caret-color:white;
+}
+
+button{
+    position:absolute;
+    bottom:0;
+    height:50px;
+    border:none;
     font-family:"Courier New",monospace;
 }
 
 #send{
-    position:absolute;
     right:15%;
-    bottom:0;
     width:15%;
-    height:50px;
     background:#00aa44;
+    color:black;
 }
 
-#logout{
-    position:absolute;
+#clear{
     right:0;
-    bottom:0;
     width:15%;
-    height:50px;
     background:#aa0000;
     color:white;
 }
@@ -105,47 +79,17 @@ button{
 
 <body>
 
-<!-- LOGIN -->
-<div id="login">
-    <input id="username" placeholder="username">
-    <input id="password" type="password" placeholder="password">
-
-    <button id="registerBtn">Register</button>
-    <button id="loginBtn">Login</button>
-    <button id="skipBtn">Guest</button>
-</div>
-
-<!-- CHAT -->
-<div id="chat">
-
 <div id="messages"></div>
 
-<input id="input">
+<input id="input" autocomplete="off">
 <button id="send">SEND</button>
-<button id="logout">LOGOUT</button>
-
-</div>
+<button id="clear">CLEAR</button>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-import {
-getAuth,
-createUserWithEmailAndPassword,
-signInWithEmailAndPassword,
-signOut,
-onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-
-import {
-getDatabase,
-ref,
-push,
-onChildAdded,
-set,
-get,
-child
-} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, remove }
+from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
 apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
@@ -158,106 +102,115 @@ appId: "1:554355410181:web:250c29e43f29cfb8b4e36c"
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getDatabase(app);
-
-/* UI */
-const loginUI = document.getElementById("login");
-const chatUI = document.getElementById("chat");
-
-const usernameInput = document.getElementById("username");
-const passwordInput = document.getElementById("password");
 
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
+const send = document.getElementById("send");
+const clear = document.getElementById("clear");
 
-/* username */
-let currentUsername = "guest";
+const messagesRef = ref(db,"messages");
 
-/* convert username → fake email */
-function toEmail(username){
-return username + "@chat.local";
+/* identity */
+let username = "anon";
+
+/* per-tab colour */
+const tabId = Math.random().toString(16).slice(2);
+
+function colorFromId(id){
+let hash = 0;
+for(let i=0;i<id.length;i++){
+hash = id.charCodeAt(i) + ((hash<<5)-hash);
+}
+const colors = ["#00ff66","#66aaff","#ff6666","#ffcc00","#cc66ff","#66ffcc","#ff66aa"];
+return colors[Math.abs(hash)%colors.length];
 }
 
-/* REGISTER */
-document.getElementById("registerBtn").onclick = async () => {
+const userColor = colorFromId(tabId);
 
-const u = usernameInput.value.trim();
-const p = passwordInput.value;
-
-if(!u || !p) return;
-
-await createUserWithEmailAndPassword(auth,toEmail(u),p);
-
-await set(ref(db,"users/"+auth.currentUser.uid),{
-username:u
-});
-
-};
-
-/* LOGIN */
-document.getElementById("loginBtn").onclick = async () => {
-
-const u = usernameInput.value.trim();
-const p = passwordInput.value;
-
-await signInWithEmailAndPassword(auth,toEmail(u),p);
-
-};
-
-/* GUEST */
-document.getElementById("skipBtn").onclick = () => {
-currentUsername = "guest";
-loginUI.style.display="none";
-chatUI.style.display="block";
-};
-
-/* LOGOUT */
-document.getElementById("logout").onclick = () => {
-signOut(auth);
-};
-
-/* AUTH STATE */
-onAuthStateChanged(auth,async (user)=>{
-
-if(user){
-
-const snap = await get(child(ref(db),"users/"+user.uid));
-currentUsername = snap.exists() ? snap.val().username : "user";
-
-loginUI.style.display="none";
-chatUI.style.display="block";
-
-}else{
-
-loginUI.style.display="flex";
-chatUI.style.display="none";
-
+/* time */
+function getTime(){
+return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
 }
 
-});
+/* focus */
+function focus(){
+input.focus();
+}
+window.addEventListener("load",focus);
+window.addEventListener("click",focus);
+window.addEventListener("keydown",focus);
 
-/* SEND */
-document.getElementById("send").onclick = () => {
+/* commands */
+function handleCommands(text){
+if(text.startsWith("?name ")){
+username = text.replace("?name ","").trim() || "anon";
+return true;
+}
+
+if(text === "?help"){
+const help =
+`Commands:
+
+- ?name <name> Sets your name
+- ?help Shows this help menu`;
+
+const div = document.createElement("div");
+div.className="msg";
+
+const left = document.createElement("div");
+left.textContent = `<system> ${help}`;
+
+const time = document.createElement("div");
+time.className="time";
+time.textContent = getTime();
+
+div.appendChild(left);
+div.appendChild(time);
+
+messages.appendChild(div);
+messages.scrollTop = messages.scrollHeight;
+
+return true;
+}
+
+return false;
+}
+
+/* send */
+function sendMessage(){
 
 const text = input.value.trim();
 if(!text) return;
 
-push(ref(db,"messages"),{
+if(handleCommands(text)){
+input.value="";
+return;
+}
+
+push(messagesRef,{
 text,
-name: currentUsername,
-time: new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})
+name: username,
+color: userColor,
+time: getTime()
 });
 
 input.value="";
-};
+}
 
 input.addEventListener("keydown",(e)=>{
-if(e.key==="Enter") document.getElementById("send").click();
+if(e.key==="Enter") sendMessage();
 });
 
-/* RECEIVE */
-onChildAdded(ref(db,"messages"),(data)=>{
+send.addEventListener("click",sendMessage);
+
+clear.addEventListener("click",()=>{
+remove(messagesRef);
+messages.innerHTML="";
+});
+
+/* receive */
+onChildAdded(messagesRef,(data)=>{
 
 const msg = data.val();
 
@@ -265,7 +218,17 @@ const div = document.createElement("div");
 div.className="msg";
 
 const left = document.createElement("div");
-left.textContent = `<${msg.name}> ${msg.text}`;
+
+const name = document.createElement("span");
+name.textContent = `<${msg.name}> `;
+name.style.color = msg.color;
+
+const text = document.createElement("span");
+text.textContent = msg.text;
+text.style.color = "white";
+
+left.appendChild(name);
+left.appendChild(text);
 
 const time = document.createElement("div");
 time.className="time";
