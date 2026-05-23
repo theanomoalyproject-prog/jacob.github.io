@@ -12,6 +12,7 @@ html,body{
     overflow:hidden;
 }
 
+/* messages area */
 #messages{
     position:fixed;
     top:0;
@@ -23,6 +24,7 @@ html,body{
     color:white;
 }
 
+/* message row */
 .msg{
     display:flex;
     justify-content:space-between;
@@ -31,19 +33,21 @@ html,body{
     gap:10px;
 }
 
+/* left side */
 .left{
     display:flex;
     gap:6px;
     flex-wrap:wrap;
 }
 
+/* timestamp */
 .time{
     color:gray;
     font-size:12px;
     white-space:nowrap;
 }
 
-/* INPUT */
+/* input */
 #input{
     position:fixed;
     bottom:0;
@@ -58,6 +62,7 @@ html,body{
     padding-left:10px;
 }
 
+/* buttons */
 button{
     position:fixed;
     bottom:0;
@@ -70,7 +75,7 @@ button{
 #send{right:15%;width:15%;background:#00aa44;}
 #clear{right:0;width:15%;background:#aa0000;color:white;}
 
-/* ICONS FIXED */
+/* ICON FIXED */
 .icon{
     width:18px;
     height:18px;
@@ -79,11 +84,6 @@ button{
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    color:#888;
-}
-
-.icon:hover{
-    color:white;
 }
 
 .icon svg{
@@ -130,7 +130,7 @@ const input = document.getElementById("input");
 let username = "anon";
 let admin = false;
 
-/* color */
+/* color system */
 const tabId = Math.random().toString(16).slice(2);
 
 function colorFromId(id){
@@ -138,7 +138,10 @@ let hash = 0;
 for(let i=0;i<id.length;i++){
 hash = id.charCodeAt(i) + ((hash<<5)-hash);
 }
-const colors = ["#00ff66","#66aaff","#ff6666","#ffcc00","#cc66ff","#66ffcc","#ff66aa"];
+const colors = [
+"#00ff66","#66aaff","#ff6666",
+"#ffcc00","#cc66ff","#66ffcc","#ff66aa"
+];
 return colors[Math.abs(hash)%colors.length];
 }
 
@@ -176,18 +179,20 @@ return true;
 return false;
 }
 
-/* local */
+/* local message */
 function addLocal(text,name){
 const div = document.createElement("div");
 div.className="msg";
 
-div.innerHTML = `<div><span style="color:gray">&lt;${name}&gt;</span> ${text}</div>
-<div class="time">${time()}</div>`;
+div.innerHTML = `
+<div><span style="color:gray">&lt;${name}&gt;</span> ${text}</div>
+<div class="time">${time()}</div>
+`;
 
 messages.appendChild(div);
 }
 
-/* send */
+/* send message */
 function send(){
 
 const text = input.value.trim();
@@ -219,7 +224,7 @@ remove(messagesRef);
 messages.innerHTML="";
 };
 
-/* render */
+/* render messages */
 onChildAdded(messagesRef,(snap)=>{
 
 const msg = snap.val();
@@ -228,7 +233,7 @@ const id = snap.key;
 const div = document.createElement("div");
 div.className="msg";
 
-/* left */
+/* left side */
 const left = document.createElement("div");
 
 const nameSpan = document.createElement("span");
@@ -241,37 +246,43 @@ textSpan.textContent = msg.text;
 left.appendChild(nameSpan);
 left.appendChild(textSpan);
 
-/* right */
+/* right side */
 const right = document.createElement("div");
 right.style.display="flex";
 right.style.alignItems="center";
 
-/* DELETE ICON */
+/* DELETE ICON (FIXED SVG COLOR) */
 if(admin){
 
 const del = document.createElement("span");
 del.className="icon";
 del.innerHTML = `
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+<svg viewBox="0 0 24 24" width="18" height="18"
+fill="none" stroke="#888" stroke-width="2"
+stroke-linecap="round" stroke-linejoin="round">
 <polyline points="3 6 5 6 21 6"/>
 <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
 <path d="M10 11v6"/>
 <path d="M14 11v6"/>
 <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
 </svg>`;
+
 del.onclick=()=> remove(ref(db,"messages/"+id));
 
 /* EDIT ICON */
 const edit = document.createElement("span");
 edit.className="icon";
 edit.innerHTML = `
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+<svg viewBox="0 0 24 24" width="18" height="18"
+fill="none" stroke="#888" stroke-width="2"
+stroke-linecap="round" stroke-linejoin="round">
 <path d="M12 20h9"/>
 <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
 </svg>`;
+
 edit.onclick=()=>{
 
-const newText = prompt("Edit message:",msg.text);
+const newText = prompt("Edit message:", msg.text);
 if(newText !== null){
 update(ref(db,"messages/"+id),{
 text:newText
@@ -283,6 +294,7 @@ right.appendChild(del);
 right.appendChild(edit);
 }
 
+/* time */
 const t = document.createElement("span");
 t.className="time";
 t.textContent = msg.time;
