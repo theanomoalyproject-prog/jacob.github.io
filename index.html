@@ -40,11 +40,11 @@ html,body{
     border:none;
     outline:none;
     background:black;
-    color:#00ff66;
+    color:white;          /* typing is WHITE */
     font-family:"Courier New",monospace;
     font-size:clamp(14px,4vw,20px);
     padding-left:8px;
-    caret-color:#00ff66;
+    caret-color:white;    /* cursor is WHITE */
 }
 
 button{
@@ -105,29 +105,28 @@ const clear = document.getElementById("clear");
 
 const messagesRef = ref(db,"messages");
 
-/* =========================
-   TRUE UNIQUE TAB SYSTEM
-========================= */
-
-/* every tab gets UNIQUE id (NOT localStorage) */
+/* unique per-tab identity */
 const tabId = Math.random().toString(16).slice(2);
 
-/* deterministic color from id */
+/* stable color from tab */
 function colorFromId(id){
     let hash = 0;
     for(let i=0;i<id.length;i++){
         hash = id.charCodeAt(i) + ((hash<<5)-hash);
     }
-    const colors = ["#00ff66","#66aaff","#ff6666","#ffcc00","#cc66ff","#66ffcc","#ff66aa"];
+    const colors = [
+        "#00ff66","#66aaff","#ff6666",
+        "#ffcc00","#cc66ff","#66ffcc","#ff66aa"
+    ];
     return colors[Math.abs(hash) % colors.length];
 }
 
 const userColor = colorFromId(tabId);
 
-/* name */
+/* username */
 let username = "anon";
 
-/* always focus */
+/* keep focus so typing always works */
 function focus(){
     input.focus();
 }
@@ -162,13 +161,12 @@ input.addEventListener("keydown",(e)=>{
 
 send.addEventListener("click",sendMessage);
 
-/* clear ALL messages (global) */
 clear.addEventListener("click",()=>{
     remove(messagesRef);
     messages.innerHTML="";
 });
 
-/* receive */
+/* receive messages */
 onChildAdded(messagesRef,(data)=>{
 
     const msg = data.val();
