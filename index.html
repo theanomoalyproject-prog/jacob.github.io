@@ -7,10 +7,9 @@
 html,body{
     margin:0;
     background:black;
-    color:white;
     overflow:hidden;
     font-family:"Courier New",monospace;
-    font-size:22px;
+    font-size:20px;
 }
 
 #messages{
@@ -20,11 +19,16 @@ html,body{
     right:0;
     bottom:40px;
     overflow-y:auto;
-    padding:6px;
+    padding:8px;
+    color:white;
     white-space:pre-wrap;
 }
 
-#type{
+.msg{
+    margin-bottom:2px;
+}
+
+#input{
     position:absolute;
     bottom:0;
     left:0;
@@ -32,14 +36,14 @@ html,body{
     border:none;
     outline:none;
     background:black;
-    color:white;
+    color:#00ff66;
     font-family:"Courier New",monospace;
-    font-size:22px;
-    padding:6px;
+    font-size:20px;
+    padding:8px;
 }
 
-#type::placeholder{
-    color:white;
+#input::placeholder{
+    color:#00ff66;
 }
 </style>
 </head>
@@ -48,23 +52,12 @@ html,body{
 
 <div id="messages"></div>
 
-<input
-id="type"
-autocomplete="off"
-placeholder=" "
->
+<input id="input" autocomplete="off" placeholder=" ">
 
 <script type="module">
 
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-
-import {
-    getDatabase,
-    ref,
-    push,
-    onChildAdded
-}
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded }
 from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -78,55 +71,36 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
 const db = getDatabase(app);
 
+const input = document.getElementById("input");
 const messages = document.getElementById("messages");
-
-const type = document.getElementById("type");
-
 const messagesRef = ref(db,"messages");
 
-function updatePlaceholder(){
-    type.placeholder = " " + type.value;
-}
-
-type.addEventListener("input",updatePlaceholder);
-
-type.addEventListener("keydown",e=>{
+input.addEventListener("keydown",(e)=>{
 
     if(e.key==="Enter"){
 
-        const text = type.value.trim();
-
+        const text = input.value.trim();
         if(!text) return;
 
-        push(messagesRef,{
-            text:text
-        });
+        push(messagesRef,{ text });
 
-        type.value="";
-
-        updatePlaceholder();
+        input.value="";
     }
-
 });
 
-onChildAdded(messagesRef,data=>{
+onChildAdded(messagesRef,(data)=>{
 
     const msg = data.val();
 
     const div = document.createElement("div");
-
+    div.className = "msg";
     div.textContent = "<> " + msg.text;
 
     messages.appendChild(div);
-
     messages.scrollTop = messages.scrollHeight;
-
 });
-
-updatePlaceholder();
 
 </script>
 
