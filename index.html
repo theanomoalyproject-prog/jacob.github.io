@@ -106,8 +106,8 @@ function time(){
 return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
 }
 
-/* SLOW TYPEWRITER (VERY CLEAR NOW) */
-function typeText(element, text, speed = 45){
+/* TYPEWRITER (MIDDLE SPEED) */
+function typeText(element, text, speed = 32){
 let i = 0;
 
 function step(){
@@ -121,7 +121,7 @@ setTimeout(step, speed);
 step();
 }
 
-/* MESSAGE BUILDER */
+/* MESSAGE */
 function createMessage(name, text, timeText, color="#00ff66"){
 
 const div = document.createElement("div");
@@ -150,8 +150,8 @@ div.appendChild(right);
 messages.appendChild(div);
 messages.scrollTop = messages.scrollHeight;
 
-/* IMPORTANT: slow visible typing */
-typeText(textSpan, text, 55);
+/* animation */
+typeText(textSpan, text, 32);
 }
 
 /* COMMANDS */
@@ -162,7 +162,6 @@ username = text.replace("?name ","").trim() || "anon";
 return true;
 }
 
-/* FIXED HELP FORMAT */
 if(text === "?help"){
 
 const help =
