@@ -96,32 +96,32 @@ const input = document.getElementById("input");
 
 /* ---------------- COOKIE SYSTEM ---------------- */
 
-function setCookie(name, value, days){
-    let expires = "";
+function setCookie(name,value,days){
+    let expires="";
     if(days){
-        const date = new Date();
-        date.setTime(date.getTime() + (days*24*60*60*1000));
-        expires = "; expires=" + date.toUTCString();
+        const d=new Date();
+        d.setTime(d.getTime()+(days*24*60*60*1000));
+        expires="; expires="+d.toUTCString();
     }
-    document.cookie = name + "=" + value + expires + "; path=/";
+    document.cookie=name+"="+value+expires+"; path=/";
 }
 
 function getCookie(name){
-    const cookies = document.cookie.split("; ");
+    const cookies=document.cookie.split("; ");
     for(let c of cookies){
-        const [key,value] = c.split("=");
-        if(key === name) return value;
+        const [k,v]=c.split("=");
+        if(k===name) return v;
     }
     return null;
 }
 
-let userId = getCookie("userId");
+let userId=getCookie("userId");
 if(!userId){
-    userId = Math.random().toString(36).substring(2,10);
+    userId=Math.random().toString(36).substring(2,10);
     setCookie("userId",userId,365);
 }
 
-let username = getCookie("username") || "anon";
+let username=getCookie("username")||"anon";
 
 /* ---------------- HELPERS ---------------- */
 
@@ -130,18 +130,18 @@ function time(){
 }
 
 function hashColor(str){
-    let hash = 0;
+    let hash=0;
     for(let i=0;i<str.length;i++){
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        hash=str.charCodeAt(i)+((hash<<5)-hash);
     }
-    return `hsl(${hash % 360}, 80%, 60%)`;
+    return `hsl(${hash%360},80%,60%)`;
 }
 
-function typeText(element,text,speed=32){
+function typeText(el,text,speed=32){
     let i=0;
     function step(){
         if(i<text.length){
-            element.textContent += text[i++];
+            el.textContent+=text[i++];
             setTimeout(step,speed);
         }
     }
@@ -183,17 +183,17 @@ function createMessage(name,text,timeText,color="#00ff66"){
 function handleCommands(text){
 
 if(text.startsWith("?name ")){
-    username = text.replace("?name ","").trim() || "anon";
+    username=text.replace("?name ","").trim()||"anon";
     setCookie("username",username,365);
     return true;
 }
 
-/* HELP (UPDATED) */
-if(text === "?help"){
+/* HELP (FORMATTED EXACTLY) */
+if(text==="?help"){
     createMessage(
         "system",
-        "?name name - sets your username\n" +
-        "?msg user message - sends a private message (only you + them can see it)\n" +
+        "?name <name> - sets your username\n" +
+        "?msg <user> message - sends a private message (only you + them can see it)\n" +
         "?help - shows this help menu",
         time(),
         "gray"
@@ -203,19 +203,19 @@ if(text === "?help"){
 
 /* PRIVATE MESSAGE */
 if(text.startsWith("?msg ")){
-    const parts = text.split(" ");
-    const target = parts[1]?.toLowerCase();
-    const msg = parts.slice(2).join(" ");
+    const parts=text.split(" ");
+    const target=parts[1]?.toLowerCase();
+    const msg=parts.slice(2).join(" ");
 
-    if(!target || !msg) return true;
+    if(!target||!msg) return true;
 
     push(messagesRef,{
-        text: msg,
-        name: username,
-        userId: userId,
-        to: target,
-        time: time(),
-        private: true
+        text:msg,
+        name:username,
+        userId:userId,
+        to:target,
+        time:time(),
+        private:true
     });
 
     return true;
@@ -227,7 +227,7 @@ return false;
 /* ---------------- SEND ---------------- */
 
 function send(){
-    const text = input.value.trim();
+    const text=input.value.trim();
     if(!text) return;
 
     if(handleCommands(text)){
@@ -237,9 +237,9 @@ function send(){
 
     push(messagesRef,{
         text,
-        name: username,
-        userId: userId,
-        time: time(),
+        name:username,
+        userId:userId,
+        time:time(),
         private:false
     });
 
@@ -261,27 +261,25 @@ document.getElementById("clear").onclick=()=>{
 
 onChildAdded(messagesRef,(snap)=>{
 
-const msg = snap.val();
+const msg=snap.val();
+const current=username.toLowerCase();
 
-const current = username.toLowerCase();
-
-/* PRIVATE MESSAGE */
+/* PRIVATE */
 if(msg.private){
 
-    const isSender = msg.name === username;
-    const isReceiver = msg.to === current;
+    const isSender=msg.name===username;
+    const isReceiver=msg.to===current;
 
-    if(!isSender && !isReceiver) return;
+    if(!isSender&&!isReceiver) return;
 
-    let leftName;
-    let rightName;
+    let leftName,rightName;
 
     if(isSender){
-        leftName = "You";
-        rightName = msg.to;
+        leftName="You";
+        rightName=msg.to;
     } else {
-        leftName = msg.name;
-        rightName = "You";
+        leftName=msg.name;
+        rightName="You";
     }
 
     createMessage(
@@ -294,12 +292,12 @@ if(msg.private){
     return;
 }
 
-/* NORMAL MESSAGE */
+/* PUBLIC */
 createMessage(
 msg.name,
 msg.text,
 msg.time,
-hashColor(msg.userId || msg.name)
+hashColor(msg.userId||msg.name)
 );
 
 });
