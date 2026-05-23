@@ -58,18 +58,8 @@ button{
     cursor:pointer;
 }
 
-#send{
-    right:15%;
-    width:15%;
-    background:#00aa44;
-}
-
-#clear{
-    right:0;
-    width:15%;
-    background:#aa0000;
-    color:white;
-}
+#send{right:15%;width:15%;background:#00aa44;}
+#clear{right:0;width:15%;background:#aa0000;color:white;}
 </style>
 </head>
 
@@ -84,13 +74,8 @@ button{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-
 import {
-getDatabase,
-ref,
-push,
-onChildAdded,
-remove
+getDatabase, ref, push, onChildAdded, remove
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -111,43 +96,73 @@ const messagesRef = ref(db,"messages");
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 
-let username = "anon";
+/* ---------------- COOKIE ID SYSTEM ---------------- */
+
+function setCookie(name, value, days){
+    let expires = "";
+    if(days){
+        const date = new Date();
+        date.setTime(date.getTime() + (days*24*60*60*1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + value + expires + "; path=/";
+}
+
+function getCookie(name){
+    const cookies = document.cookie.split("; ");
+    for(let c of cookies){
+        const [key, value] = c.split("=");
+        if(key === name) return value;
+    }
+    return null;
+}
+
+/* persistent identity */
+let userId = getCookie("userId");
+
+if(!userId){
+    userId = Math.random().toString(36).substring(2, 10);
+    setCookie("userId", userId, 365);
+}
+
+/* username (still changeable) */
+let username = getCookie("username") || "anon";
+
+/* ---------------- VISUAL ID COLOR ---------------- */
+
+function hashColor(str){
+    let hash = 0;
+    for(let i=0;i<str.length;i++){
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return `hsl(${hash % 360}, 80%, 60%)`;
+}
 
 /* focus */
 window.addEventListener("load",()=>input.focus());
 window.addEventListener("click",()=>input.focus());
 
 function time(){
-return new Date().toLocaleTimeString([], {
-hour:"2-digit",
-minute:"2-digit"
-});
+return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
 }
 
 /* TYPEWRITER */
-function typeText(element,text,speed=32){
-
+function typeText(element, text, speed = 32){
 let i = 0;
 
 function step(){
-
 if(i < text.length){
-
 element.textContent += text[i];
 i++;
-
-setTimeout(step,speed);
-
+setTimeout(step, speed);
 }
-
 }
 
 step();
-
 }
 
 /* MESSAGE */
-function createMessage(name,text,timeText,color="#00ff66"){
+function createMessage(name, text, timeText, color="#00ff66", uid=""){
 
 const div = document.createElement("div");
 div.className="msg";
@@ -159,7 +174,6 @@ nameSpan.textContent = `<${name}> `;
 nameSpan.style.color = color;
 
 const textSpan = document.createElement("span");
-textSpan.style.whiteSpace="pre-line";
 
 left.appendChild(nameSpan);
 left.appendChild(textSpan);
@@ -172,49 +186,39 @@ div.appendChild(left);
 div.appendChild(right);
 
 messages.appendChild(div);
-
 messages.scrollTop = messages.scrollHeight;
 
-typeText(textSpan,text,32);
-
+/* animation */
+typeText(textSpan, text, 32);
 }
 
 /* COMMANDS */
 function handleCommands(text){
 
 if(text.startsWith("?name ")){
-
 username = text.replace("?name ","").trim() || "anon";
-
+setCookie("username", username, 365);
 return true;
 }
 
 if(text === "?help"){
 
 const help =
-"Commands:\n\n"+
-"?name name - Sets your name\n"+
+"Commands:\n\n" +
+"?name name - Sets your name\n" +
 "?help - Shows this help menu";
 
-createMessage(
-"system",
-help,
-time(),
-"gray"
-);
-
+createMessage("system", help, time(), "gray");
 return true;
 }
 
 return false;
-
 }
 
 /* SEND */
 function send(){
 
 const text = input.value.trim();
-
 if(!text) return;
 
 if(handleCommands(text)){
@@ -222,40 +226,25 @@ input.value="";
 return;
 }
 
-/* LIVE CHAT */
 push(messagesRef,{
 text,
 name:username,
-time:time()
-});
-
-/* PERMANENT LOG */
-push(ref(db,"logs"),{
-text,
-name:username,
+userId:userId,
 time:time()
 });
 
 input.value="";
-
 }
 
 document.getElementById("send").onclick=send;
 
 input.addEventListener("keydown",(e)=>{
-
-if(e.key==="Enter"){
-send();
-}
-
+if(e.key==="Enter") send();
 });
 
 document.getElementById("clear").onclick=()=>{
-
 remove(messagesRef);
-
 messages.innerHTML="";
-
 };
 
 /* RENDER */
@@ -263,10 +252,14 @@ onChildAdded(messagesRef,(snap)=>{
 
 const msg = snap.val();
 
+const color = hashColor(msg.userId || msg.name);
+
 createMessage(
 msg.name,
 msg.text,
-msg.time
+msg.time,
+color,
+msg.userId
 );
 
 });
