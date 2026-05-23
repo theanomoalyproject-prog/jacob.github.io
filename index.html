@@ -27,7 +27,22 @@ html,body{
 }
 
 .msg{
-    margin-bottom:3px;
+    margin-bottom:4px;
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+}
+
+/* left chat text */
+.left{
+    display:inline;
+}
+
+/* timestamp */
+.time{
+    color:gray;
+    font-size:12px;
+    white-space:nowrap;
 }
 
 /* input */
@@ -40,11 +55,11 @@ html,body{
     border:none;
     outline:none;
     background:black;
-    color:white;          /* typing is WHITE */
+    color:white;
     font-family:"Courier New",monospace;
     font-size:clamp(14px,4vw,20px);
     padding-left:8px;
-    caret-color:white;    /* cursor is WHITE */
+    caret-color:white;
 }
 
 button{
@@ -105,28 +120,34 @@ const clear = document.getElementById("clear");
 
 const messagesRef = ref(db,"messages");
 
-/* unique per-tab identity */
+/* identity */
 const tabId = Math.random().toString(16).slice(2);
 
-/* stable color from tab */
 function colorFromId(id){
     let hash = 0;
     for(let i=0;i<id.length;i++){
         hash = id.charCodeAt(i) + ((hash<<5)-hash);
     }
-    const colors = [
-        "#00ff66","#66aaff","#ff6666",
-        "#ffcc00","#cc66ff","#66ffcc","#ff66aa"
-    ];
+    const colors = ["#00ff66","#66aaff","#ff6666","#ffcc00","#cc66ff","#66ffcc","#ff66aa"];
     return colors[Math.abs(hash) % colors.length];
 }
 
 const userColor = colorFromId(tabId);
 
-/* username */
 let username = "anon";
 
-/* keep focus so typing always works */
+/* COMMAND SYSTEM */
+const commands = {
+    "?name": "Sets your name",
+    "?help": "Shows this help menu"
+};
+
+function getTime(){
+    const d = new Date();
+    return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+}
+
+/* focus */
 function focus(){
     input.focus();
 }
@@ -140,8 +161,28 @@ function sendMessage(){
     const text = input.value.trim();
     if(!text) return;
 
+    /* NAME COMMAND */
     if(text.startsWith("?name ")){
         username = text.replace("?name ","").trim() || "anon";
+        input.value="";
+        return;
+    }
+
+    /* HELP COMMAND */
+    if(text === "?help"){
+        const helpText =
+            "Commands:\n\n" +
+            Object.entries(commands)
+                .map(([cmd,desc]) => `- ${cmd} ${desc}`)
+                .join("\n");
+
+        push(messagesRef,{
+            text: helpText,
+            name: "system",
+            color: "#aaaaaa",
+            time: getTime()
+        });
+
         input.value="";
         return;
     }
@@ -149,7 +190,8 @@ function sendMessage(){
     push(messagesRef,{
         text,
         name: username,
-        color: userColor
+        color: userColor,
+        time: getTime()
     });
 
     input.value="";
@@ -166,7 +208,7 @@ clear.addEventListener("click",()=>{
     messages.innerHTML="";
 });
 
-/* receive messages */
+/* receive */
 onChildAdded(messagesRef,(data)=>{
 
     const msg = data.val();
@@ -174,9 +216,12 @@ onChildAdded(messagesRef,(data)=>{
     const name = msg.name || "anon";
     const text = msg.text || "";
     const color = msg.color || "#ffffff";
+    const time = msg.time || "";
 
     const div = document.createElement("div");
     div.className = "msg";
+
+    const left = document.createElement("div");
 
     const nameSpan = document.createElement("span");
     nameSpan.textContent = `<${name}>`;
@@ -184,10 +229,16 @@ onChildAdded(messagesRef,(data)=>{
 
     const textSpan = document.createElement("span");
     textSpan.textContent = ` ${text}`;
-    textSpan.style.color = "white";
 
-    div.appendChild(nameSpan);
-    div.appendChild(textSpan);
+    left.appendChild(nameSpan);
+    left.appendChild(textSpan);
+
+    const timeSpan = document.createElement("div");
+    timeSpan.className = "time";
+    timeSpan.textContent = time;
+
+    div.appendChild(left);
+    div.appendChild(timeSpan);
 
     messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
