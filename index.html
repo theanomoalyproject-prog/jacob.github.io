@@ -12,7 +12,6 @@ html,body{
     overflow:hidden;
 }
 
-/* messages */
 #messages{
     position:absolute;
     top:0;
@@ -22,22 +21,35 @@ html,body{
     overflow-y:auto;
     padding:8px;
     color:white;
-    font-size:clamp(14px,4vw,20px);
 }
 
 .msg{
     display:flex;
     justify-content:space-between;
-    margin-bottom:4px;
+    margin-bottom:6px;
+    align-items:center;
+}
+
+.left{
+    display:flex;
+    gap:8px;
 }
 
 .time{
     color:gray;
     font-size:12px;
-    white-space:nowrap;
 }
 
-/* input */
+.icon{
+    cursor:pointer;
+    margin-left:6px;
+    color:#888;
+}
+
+.icon:hover{
+    color:white;
+}
+
 #input{
     position:absolute;
     bottom:0;
@@ -49,8 +61,6 @@ html,body{
     outline:none;
     color:white;
     font-family:"Courier New",monospace;
-    padding-left:8px;
-    caret-color:white;
 }
 
 button{
@@ -61,19 +71,8 @@ button{
     font-family:"Courier New",monospace;
 }
 
-#send{
-    right:15%;
-    width:15%;
-    background:#00aa44;
-    color:black;
-}
-
-#clear{
-    right:0;
-    width:15%;
-    background:#aa0000;
-    color:white;
-}
+#send{right:15%;width:15%;background:#00aa44;}
+#clear{right:0;width:15%;background:#aa0000;color:white;}
 </style>
 </head>
 
@@ -81,15 +80,16 @@ button{
 
 <div id="messages"></div>
 
-<input id="input" autocomplete="off">
+<input id="input">
 <button id="send">SEND</button>
 <button id="clear">CLEAR</button>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, remove }
-from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+import {
+getDatabase, ref, push, onChildAdded, remove, update
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
 apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
@@ -104,47 +104,36 @@ appId: "1:554355410181:web:250c29e43f29cfb8b4e36c"
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const messages = document.getElementById("messages");
-const input = document.getElementById("input");
-const send = document.getElementById("send");
-const clear = document.getElementById("clear");
-
 const messagesRef = ref(db,"messages");
 
-/* identity */
-let username = "anon";
+const messages = document.getElementById("messages");
+const input = document.getElementById("input");
 
-/* per-tab colour */
+let username = "anon";
+let admin = false;
+
+/* ID */
 const tabId = Math.random().toString(16).slice(2);
 
-function colorFromId(id){
-let hash = 0;
-for(let i=0;i<id.length;i++){
-hash = id.charCodeAt(i) + ((hash<<5)-hash);
-}
-const colors = ["#00ff66","#66aaff","#ff6666","#ffcc00","#cc66ff","#66ffcc","#ff66aa"];
-return colors[Math.abs(hash)%colors.length];
-}
-
-const userColor = colorFromId(tabId);
-
 /* time */
-function getTime(){
+function time(){
 return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
 }
 
-/* focus */
-function focus(){
-input.focus();
-}
-window.addEventListener("load",focus);
-window.addEventListener("click",focus);
-window.addEventListener("keydown",focus);
-
-/* commands */
+/* hidden command */
 function handleCommands(text){
+
 if(text.startsWith("?name ")){
 username = text.replace("?name ","").trim() || "anon";
+return true;
+}
+
+if(text.startsWith("?proveownership ")){
+const code = text.split(" ")[1];
+if(code === "ABCXY"){
+admin = true;
+alert("Admin mode enabled");
+}
 return true;
 }
 
@@ -155,30 +144,32 @@ const help =
 - ?name <name> Sets your name
 - ?help Shows this help menu`;
 
-const div = document.createElement("div");
-div.className="msg";
-
-const left = document.createElement("div");
-left.textContent = `<system> ${help}`;
-
-const time = document.createElement("div");
-time.className="time";
-time.textContent = getTime();
-
-div.appendChild(left);
-div.appendChild(time);
-
-messages.appendChild(div);
-messages.scrollTop = messages.scrollHeight;
-
+addLocal(help,"system");
 return true;
 }
 
 return false;
 }
 
-/* send */
-function sendMessage(){
+/* local system message */
+function addLocal(text,name){
+const div = document.createElement("div");
+div.className="msg";
+
+const left = document.createElement("div");
+left.textContent = `<${name}> ${text}`;
+
+const t = document.createElement("div");
+t.className="time";
+t.textContent = time();
+
+div.appendChild(left);
+div.appendChild(t);
+
+messages.appendChild(div);
+}
+
+function send(){
 
 const text = input.value.trim();
 if(!text) return;
@@ -190,52 +181,73 @@ return;
 
 push(messagesRef,{
 text,
-name: username,
-color: userColor,
-time: getTime()
+name:username,
+time:time()
 });
 
 input.value="";
 }
 
+document.getElementById("send").onclick = send;
+
 input.addEventListener("keydown",(e)=>{
-if(e.key==="Enter") sendMessage();
+if(e.key==="Enter") send();
 });
 
-send.addEventListener("click",sendMessage);
-
-clear.addEventListener("click",()=>{
+document.getElementById("clear").onclick=()=>{
 remove(messagesRef);
 messages.innerHTML="";
-});
+};
 
-/* receive */
-onChildAdded(messagesRef,(data)=>{
+/* render */
+onChildAdded(messagesRef,(snap)=>{
 
-const msg = data.val();
+const msg = snap.val();
+const id = snap.key;
 
 const div = document.createElement("div");
 div.className="msg";
 
 const left = document.createElement("div");
 
-const name = document.createElement("span");
-name.textContent = `<${msg.name}> `;
-name.style.color = msg.color;
+left.textContent = `<${msg.name}> ${msg.text}`;
 
-const text = document.createElement("span");
-text.textContent = msg.text;
-text.style.color = "white";
+const right = document.createElement("div");
+right.style.display="flex";
 
-left.appendChild(name);
-left.appendChild(text);
+const t = document.createElement("span");
+t.className="time";
+t.textContent = msg.time;
 
-const time = document.createElement("div");
-time.className="time";
-time.textContent = msg.time;
+/* admin controls */
+if(admin){
+
+const del = document.createElement("span");
+del.textContent="🗑";
+del.className="icon";
+del.onclick=()=> remove(ref(db,"messages/"+id));
+
+const edit = document.createElement("span");
+edit.textContent="✏";
+edit.className="icon";
+edit.onclick=()=>{
+
+const newText = prompt("Edit message:",msg.text);
+if(newText !== null){
+update(ref(db,"messages/"+id),{
+text:newText
+});
+}
+};
+
+right.appendChild(del);
+right.appendChild(edit);
+}
+
+right.appendChild(t);
 
 div.appendChild(left);
-div.appendChild(time);
+div.appendChild(right);
 
 messages.appendChild(div);
 messages.scrollTop = messages.scrollHeight;
