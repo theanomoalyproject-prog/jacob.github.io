@@ -123,30 +123,35 @@ if(!userId){
 
 let username=getCookie("username")||"anon";
 
-/* ---------------- TYPE SOUND ---------------- */
+/* ---------------- AUDIO ---------------- */
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-function keySound(){
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+function playTypeSound(base=180, volume=0.02){
+    const osc=audioCtx.createOscillator();
+    const gain=audioCtx.createGain();
 
-    osc.type = "square";
-    osc.frequency.setValueAtTime(120 + Math.random()*80, audioCtx.currentTime);
+    osc.type="square";
+    osc.frequency.setValueAtTime(base+Math.random()*120,audioCtx.currentTime);
 
-    gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.05);
+    gain.gain.setValueAtTime(volume,audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.04);
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
 
     osc.start();
-    osc.stop(audioCtx.currentTime + 0.05);
+    osc.stop(audioCtx.currentTime+0.04);
 }
 
-/* unlock audio on first interaction */
-window.addEventListener("click", () => audioCtx.resume(), { once:true });
-window.addEventListener("keydown", () => audioCtx.resume(), { once:true });
+/* input typing sound */
+function keySound(){
+    playTypeSound(120,0.03);
+}
+
+/* unlock audio */
+window.addEventListener("click",()=>audioCtx.resume(),{once:true});
+window.addEventListener("keydown",()=>audioCtx.resume(),{once:true});
 
 /* ---------------- HELPERS ---------------- */
 
@@ -162,14 +167,21 @@ function hashColor(str){
     return `hsl(${hash%360},80%,60%)`;
 }
 
+/* TYPEWRITER WITH SOUND */
 function typeText(el,text,speed=32){
     let i=0;
+
     function step(){
         if(i<text.length){
             el.textContent+=text[i++];
+
+            // per-letter message sound (different from input)
+            playTypeSound(220,0.015);
+
             setTimeout(step,speed);
         }
     }
+
     step();
 }
 
@@ -229,6 +241,7 @@ if(text.startsWith("?msg ")){
     const parts=text.split(" ");
     const target=parts[1]?.toLowerCase();
     const msg=parts.slice(2).join(" ");
+
     if(!target||!msg) return true;
 
     push(messagesRef,{
