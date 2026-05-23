@@ -8,11 +8,48 @@
 html,body{
     margin:0;
     background:black;
-    overflow:hidden;
     font-family:"Courier New",monospace;
+    overflow:hidden;
 }
 
-/* messages */
+/* LOGIN SCREEN */
+#login{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+    color:white;
+}
+
+input{
+    background:black;
+    border:1px solid #333;
+    color:white;
+    padding:10px;
+    font-family:"Courier New",monospace;
+    width:220px;
+}
+
+button{
+    background:#00aa44;
+    border:none;
+    padding:10px;
+    font-family:"Courier New",monospace;
+    cursor:pointer;
+}
+
+#skip{
+    background:#555;
+}
+
+/* CHAT */
+#chat{
+    display:none;
+}
+
 #messages{
     position:absolute;
     top:0;
@@ -23,57 +60,47 @@ html,body{
     padding:8px;
     font-size:clamp(14px,4vw,20px);
     color:white;
-    white-space:pre-wrap;
 }
 
 .msg{
-    margin-bottom:4px;
     display:flex;
     justify-content:space-between;
-    gap:10px;
+    margin-bottom:4px;
 }
 
 .time{
     color:gray;
     font-size:12px;
-    white-space:nowrap;
 }
 
-/* input */
 #input{
     position:absolute;
     bottom:0;
     left:0;
     width:65%;
     height:50px;
-    border:none;
-    outline:none;
     background:black;
     color:white;
-    font-family:"Courier New",monospace;
-    font-size:clamp(14px,4vw,20px);
-    padding-left:8px;
-    caret-color:white;
-}
-
-button{
-    position:absolute;
-    bottom:0;
-    height:50px;
     border:none;
+    outline:none;
     font-family:"Courier New",monospace;
 }
 
 #send{
+    position:absolute;
     right:15%;
+    bottom:0;
     width:15%;
+    height:50px;
     background:#00aa44;
-    color:black;
 }
 
-#clear{
+#logout{
+    position:absolute;
     right:0;
+    bottom:0;
     width:15%;
+    height:50px;
     background:#aa0000;
     color:white;
 }
@@ -82,178 +109,154 @@ button{
 
 <body>
 
+<!-- LOGIN -->
+<div id="login">
+    <input id="email" placeholder="email">
+    <input id="pass" type="password" placeholder="password">
+    <button id="loginBtn">Login</button>
+    <button id="registerBtn">Register</button>
+    <button id="skip">Skip (Guest)</button>
+</div>
+
+<!-- CHAT -->
+<div id="chat">
+
 <div id="messages"></div>
 
-<input id="input" autocomplete="off">
+<input id="input">
 <button id="send">SEND</button>
-<button id="clear">CLEAR</button>
+<button id="logout">LOGOUT</button>
+
+</div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, remove }
-from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+import {
+getAuth,
+createUserWithEmailAndPassword,
+signInWithEmailAndPassword,
+signOut,
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+
+import {
+getDatabase,
+ref,
+push,
+onChildAdded
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
-    authDomain: "jacob-chat.firebaseapp.com",
-    databaseURL: "https://jacob-chat-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "jacob-chat",
-    storageBucket: "jacob-chat.firebasestorage.app",
-    messagingSenderId: "554355410181",
-    appId: "1:554355410181:web:250c29e43f29cfb8b4e36c"
+apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
+authDomain: "jacob-chat.firebaseapp.com",
+databaseURL: "https://jacob-chat-default-rtdb.europe-west1.firebasedatabase.app",
+projectId: "jacob-chat",
+storageBucket: "jacob-chat.firebasestorage.app",
+messagingSenderId: "554355410181",
+appId: "1:554355410181:web:250c29e43f29cfb8b4e36c"
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getDatabase(app);
-
-const input = document.getElementById("input");
-const messages = document.getElementById("messages");
-const send = document.getElementById("send");
-const clear = document.getElementById("clear");
 
 const messagesRef = ref(db,"messages");
 
-/* identity */
-const tabId = Math.random().toString(16).slice(2);
+/* UI */
+const loginUI = document.getElementById("login");
+const chatUI = document.getElementById("chat");
 
-function colorFromId(id){
-    let hash = 0;
-    for(let i=0;i<id.length;i++){
-        hash = id.charCodeAt(i) + ((hash<<5)-hash);
-    }
-    const colors = ["#00ff66","#66aaff","#ff6666","#ffcc00","#cc66ff","#66ffcc","#ff66aa"];
-    return colors[Math.abs(hash) % colors.length];
+const email = document.getElementById("email");
+const pass = document.getElementById("pass");
+
+const loginBtn = document.getElementById("loginBtn");
+const registerBtn = document.getElementById("registerBtn");
+const skipBtn = document.getElementById("skip");
+
+const messages = document.getElementById("messages");
+const input = document.getElementById("input");
+const send = document.getElementById("send");
+const logout = document.getElementById("logout");
+
+/* USER */
+let username = "guest";
+
+/* LOGIN */
+loginBtn.onclick = async () => {
+await signInWithEmailAndPassword(auth,email.value,pass.value);
+};
+
+registerBtn.onclick = async () => {
+await createUserWithEmailAndPassword(auth,email.value,pass.value);
+};
+
+skipBtn.onclick = () => {
+username = "guest";
+loginUI.style.display="none";
+chatUI.style.display="block";
+};
+
+logout.onclick = () => {
+signOut(auth);
+};
+
+/* AUTH STATE */
+onAuthStateChanged(auth,(user)=>{
+
+if(user){
+username = user.email.split("@")[0];
+
+loginUI.style.display="none";
+chatUI.style.display="block";
+}else{
+
+loginUI.style.display="flex";
+chatUI.style.display="none";
+
 }
 
-const userColor = colorFromId(tabId);
+});
 
-let username = "anon";
+/* SEND */
+send.onclick = () => {
+const text = input.value.trim();
+if(!text) return;
 
-/* time */
-function getTime(){
-    const d = new Date();
-    return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-}
+push(messagesRef,{
+text,
+name: username,
+time: new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})
+});
 
-/* focus */
-function focus(){
-    input.focus();
-}
-window.addEventListener("load",focus);
-window.addEventListener("click",focus);
-window.addEventListener("keydown",focus);
-
-/* LOCAL HELP (ONLY FOR YOU) */
-function showHelpLocal(){
-
-    const help =
-`Commands:
-
-- ?name <name> Sets your name
-- ?help Shows this help menu`;
-
-    const div = document.createElement("div");
-    div.className = "msg";
-
-    const left = document.createElement("div");
-
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = "<system>";
-    nameSpan.style.color = "#aaaaaa";
-
-    const textSpan = document.createElement("span");
-    textSpan.textContent = " " + help;
-
-    left.appendChild(nameSpan);
-    left.appendChild(textSpan);
-
-    const timeSpan = document.createElement("div");
-    timeSpan.className = "time";
-    timeSpan.textContent = getTime();
-
-    div.appendChild(left);
-    div.appendChild(timeSpan);
-
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-}
-
-/* send */
-function sendMessage(){
-
-    const text = input.value.trim();
-    if(!text) return;
-
-    /* NAME */
-    if(text.startsWith("?name ")){
-        username = text.replace("?name ","").trim() || "anon";
-        input.value="";
-        return;
-    }
-
-    /* HELP (LOCAL ONLY) */
-    if(text === "?help"){
-        showHelpLocal();
-        input.value="";
-        return;
-    }
-
-    push(messagesRef,{
-        text,
-        name: username,
-        color: userColor,
-        time: getTime()
-    });
-
-    input.value="";
-}
+input.value="";
+};
 
 input.addEventListener("keydown",(e)=>{
-    if(e.key==="Enter") sendMessage();
+if(e.key==="Enter") send.click();
 });
 
-send.addEventListener("click",sendMessage);
-
-clear.addEventListener("click",()=>{
-    remove(messagesRef);
-    messages.innerHTML="";
-});
-
-/* receive */
+/* RECEIVE */
 onChildAdded(messagesRef,(data)=>{
 
-    const msg = data.val();
+const msg = data.val();
 
-    const name = msg.name || "anon";
-    const text = msg.text || "";
-    const color = msg.color || "#ffffff";
-    const time = msg.time || "";
+const div = document.createElement("div");
+div.className="msg";
 
-    const div = document.createElement("div");
-    div.className = "msg";
+const left = document.createElement("div");
+left.textContent = `<${msg.name}> ${msg.text}`;
 
-    const left = document.createElement("div");
+const time = document.createElement("div");
+time.className="time";
+time.textContent = msg.time;
 
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = `<${name}>`;
-    nameSpan.style.color = color;
+div.appendChild(left);
+div.appendChild(time);
 
-    const textSpan = document.createElement("span");
-    textSpan.textContent = ` ${text}`;
+messages.appendChild(div);
+messages.scrollTop = messages.scrollHeight;
 
-    left.appendChild(nameSpan);
-    left.appendChild(textSpan);
-
-    const timeSpan = document.createElement("div");
-    timeSpan.className = "time";
-    timeSpan.textContent = time;
-
-    div.appendChild(left);
-    div.appendChild(timeSpan);
-
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
 });
 
 </script>
