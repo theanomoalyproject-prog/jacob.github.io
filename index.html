@@ -56,14 +56,12 @@ button{
     border:none;
     font-family:"Courier New",monospace;
     cursor:pointer;
-    font-size:14px;
 }
 
 #send{
     right:15%;
     width:15%;
     background:#00aa44;
-    color:white;
 }
 
 #clear{
@@ -93,6 +91,7 @@ ref,
 push,
 onChildAdded,
 remove,
+set,
 onDisconnect
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
@@ -116,45 +115,40 @@ const input = document.getElementById("input");
 
 let username = "anon";
 
-/* focus instantly */
+/* unique session */
+const sessionId = Math.random().toString(16).slice(2);
+
+/* focus */
 window.addEventListener("load",()=>input.focus());
 window.addEventListener("click",()=>input.focus());
 
-/* unique tab/session */
-const sessionId = Math.random().toString(16).slice(2);
-
-/* timestamp */
 function time(){
-return new Date().toLocaleTimeString([],{
+return new Date().toLocaleTimeString([], {
 hour:"2-digit",
 minute:"2-digit"
 });
 }
 
-/* typewriter */
-function typeText(element,text,speed=32){
+/* typing animation */
+function typeText(element, text, speed = 32){
 
 let i = 0;
 
 function step(){
 
 if(i < text.length){
-
 element.textContent += text[i];
 i++;
-
-setTimeout(step,speed);
-
+setTimeout(step, speed);
 }
 
 }
 
 step();
-
 }
 
-/* create message */
-function createMessage(name,text,timeText,color="#00ff66"){
+/* message builder */
+function createMessage(name, text, timeText, color="#00ff66"){
 
 const div = document.createElement("div");
 div.className="msg";
@@ -166,7 +160,6 @@ nameSpan.textContent = `<${name}> `;
 nameSpan.style.color = color;
 
 const textSpan = document.createElement("span");
-textSpan.style.whiteSpace="pre-line";
 
 left.appendChild(nameSpan);
 left.appendChild(textSpan);
@@ -182,11 +175,10 @@ messages.appendChild(div);
 
 messages.scrollTop = messages.scrollHeight;
 
-typeText(textSpan,text,32);
-
+typeText(textSpan, text, 32);
 }
 
-/* system message helper */
+/* system message */
 function systemMessage(text){
 
 createMessage(
@@ -198,22 +190,32 @@ time(),
 
 }
 
+/* user presence */
+const userRef = ref(db,"presence/"+sessionId);
+
+set(userRef,{
+online:true
+});
+
+/* disconnect cleanup */
+onDisconnect(userRef).remove();
+
 /* JOIN MESSAGE */
 push(messagesRef,{
 system:true,
-session:sessionId,
-text:`${username} joined the chat`,
-time:time(),
-timestamp:Date.now()
+text:`${username} left the chat`,
+time:time()
 });
 
 /* LEAVE MESSAGE */
-onDisconnect(messagesRef).push({
+window.addEventListener("beforeunload",()=>{
+
+push(messagesRef,{
 system:true,
-session:sessionId,
-text:`${username} left the chat`,
-time:time(),
-timestamp:Date.now()
+text:`${username} joined the chat`,
+time:time()
+});
+
 });
 
 /* commands */
@@ -231,8 +233,8 @@ return true;
 if(text === "?help"){
 
 const help =
-"Commands:\n\n"+
-"?name name - Sets your name\n"+
+"Commands:\n\n" +
+"?name name - Sets your name\n" +
 "?help - Shows this help menu";
 
 systemMessage(help);
@@ -241,7 +243,6 @@ return true;
 }
 
 return false;
-
 }
 
 /* send */
@@ -259,12 +260,10 @@ return;
 push(messagesRef,{
 text,
 name:username,
-time:time(),
-timestamp:Date.now()
+time:time()
 });
 
 input.value="";
-
 }
 
 document.getElementById("send").onclick=send;
@@ -280,7 +279,6 @@ send();
 document.getElementById("clear").onclick=()=>{
 
 remove(messagesRef);
-
 messages.innerHTML="";
 
 };
@@ -290,6 +288,7 @@ onChildAdded(messagesRef,(snap)=>{
 
 const msg = snap.val();
 
+/* system */
 if(msg.system){
 
 createMessage(
@@ -302,6 +301,7 @@ msg.time,
 return;
 }
 
+/* normal */
 createMessage(
 msg.name,
 msg.text,
