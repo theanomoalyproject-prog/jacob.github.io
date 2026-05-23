@@ -1,334 +1,140 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
 <title>Jacob's Diary</title>
 
 <style>
-    body{
-        margin:0;
-        padding:0;
-        background:#0f0f2b;
-        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
-        color:white;
-        background-image:
-            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-        background-size:20px 20px;
-    }
+html, body {
+    margin: 0;
+    padding: 0;
+    background: black;
+    color: white;
+    overflow: hidden;
+    font-family: "Courier New", monospace;
+}
 
-    .topbar{
-        background:linear-gradient(to bottom,#5a84ff,#2144b5);
-        border-bottom:4px solid #0d2372;
-        padding:12px;
-        text-align:center;
-        box-shadow:0 3px 10px rgba(0,0,0,0.5);
-    }
+#chat {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 35px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-size: 22px;
+    line-height: 1.3;
+}
 
-    .topbar h1{
-        margin:0;
-        font-size:42px;
-        color:#fff;
-        text-shadow:
-            2px 2px 0 #000,
-            0 0 10px #8db3ff;
-        letter-spacing:2px;
-    }
+.line {
+    margin-bottom: 2px;
+}
 
-    .subtitle{
-        font-size:13px;
-        margin-top:5px;
-        color:#d6e3ff;
-    }
+#input {
+    position: absolute;
+    bottom: 5px;
+    left: 8px;
+    right: 8px;
+    border: none;
+    outline: none;
+    background: black;
+    color: white;
+    font-size: 22px;
+    font-family: "Courier New", monospace;
+}
 
-    .container{
-        width:900px;
-        margin:20px auto;
-        display:flex;
-        gap:15px;
-    }
-
-    .sidebar{
-        width:220px;
-        background:#1b1b48;
-        border:3px ridge #6d92ff;
-        padding:10px;
-        box-shadow:0 0 15px rgba(0,0,0,0.6);
-    }
-
-    .content{
-        flex:1;
-        background:#191940;
-        border:3px ridge #6d92ff;
-        padding:20px;
-        box-shadow:0 0 15px rgba(0,0,0,0.6);
-    }
-
-    .section-title{
-        background:linear-gradient(to bottom,#6a8cff,#3f63d1);
-        padding:6px;
-        font-weight:bold;
-        text-align:center;
-        border:2px outset #a8beff;
-        margin-bottom:10px;
-        text-shadow:1px 1px 0 black;
-    }
-
-    .menu-button{
-        width:100%;
-        margin-bottom:8px;
-        padding:10px;
-        font-size:14px;
-        font-weight:bold;
-        color:white;
-        cursor:pointer;
-        border:2px outset #9db5ff;
-        background:linear-gradient(to bottom,#5377f7,#2c49a8);
-        text-shadow:1px 1px 0 black;
-        transition:0.1s;
-    }
-
-    .menu-button:hover{
-        background:linear-gradient(to bottom,#6b90ff,#3657c4);
-    }
-
-    .menu-button:active{
-        border:2px inset #9db5ff;
-        transform:translateY(2px);
-    }
-
-    .diary-box{
-        background:#101030;
-        border:2px inset #5f7ee6;
-        min-height:300px;
-        padding:15px;
-        overflow:auto;
-        font-size:15px;
-        line-height:1.5;
-    }
-
-    .statusbar{
-        margin-top:15px;
-        background:#0f163d;
-        border:2px inset #506ad6;
-        padding:8px;
-        font-size:12px;
-        color:#b7c9ff;
-    }
-
-    .blink{
-        animation: blink 1s infinite;
-        color:#7cff7c;
-    }
-
-    @keyframes blink{
-        50%{
-            opacity:0;
-        }
-    }
-
-    .footer{
-        text-align:center;
-        color:#8ea7ff;
-        font-size:12px;
-        margin-top:20px;
-        padding-bottom:20px;
-    }
-
-    .counter{
-        margin-top:10px;
-        text-align:center;
-        font-family: "Courier New", monospace;
-        color:#00ff99;
-        background:black;
-        border:2px inset #555;
-        padding:5px;
-    }
-
-    .popup{
-        display:none;
-        position:fixed;
-        top:50%;
-        left:50%;
-        transform:translate(-50%,-50%);
-        background:#1d1d4f;
-        border:4px ridge #8aa6ff;
-        padding:20px;
-        width:300px;
-        z-index:1000;
-        box-shadow:0 0 20px black;
-    }
-
-    .popup h2{
-        margin-top:0;
-        text-align:center;
-        color:#fff;
-    }
-
-    .close-btn{
-        margin-top:15px;
-        width:100%;
-        padding:8px;
-        cursor:pointer;
-        font-weight:bold;
-        border:2px outset #9db5ff;
-        background:#4160d0;
-        color:white;
-    }
-
-    marquee{
-        color:#ffe16d;
-        font-weight:bold;
-        margin-top:10px;
-    }
+#input::placeholder {
+    color: white;
+}
 </style>
 </head>
 
 <body>
 
-<div class="topbar">
-    <h1>Jacob's Diary</h1>
-    <div class="subtitle">welcome to my awesome website!!!</div>
+<div id="chat"></div>
 
-    <marquee scrollamount="5">
-        ✨ under construction ✨ welcome to my diary ✨ best viewed on internet explorer ✨
-    </marquee>
-</div>
+<input
+id="input"
+type="text"
+autocomplete="off"
+autofocus
+placeholder="   "
+>
 
-<div class="container">
+<script type="module">
 
-    <div class="sidebar">
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 
-        <div class="section-title">Navigation</div>
+import {
+    getDatabase,
+    ref,
+    push,
+    onChildAdded
+}
+from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
-        <button class="menu-button" onclick="showMessage('Home page loaded.')">
-            🏠 Home
-        </button>
+const firebaseConfig = {
+    apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
+    authDomain: "jacob-chat.firebaseapp.com",
+    databaseURL: "https://jacob-chat-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "jacob-chat",
+    storageBucket: "jacob-chat.firebasestorage.app",
+    messagingSenderId: "554355410181",
+    appId: "1:554355410181:web:250c29e43f29cfb8b4e36c",
+    measurementId: "G-XWZ8N5219K"
+};
 
-        <button class="menu-button" onclick="showMessage('No diary entries yet...')">
-            📖 Read Diary
-        </button>
+const app = initializeApp(firebaseConfig);
 
-        <button class="menu-button" onclick="showPopup()">
-            💬 Guestbook
-        </button>
+const db = getDatabase(app);
 
-        <button class="menu-button" onclick="changeBackground()">
-            🎨 Change Theme
-        </button>
+const chat = document.getElementById("chat");
 
-        <button class="menu-button" onclick="playBeep()">
-            🔊 Cool Sound
-        </button>
+const input = document.getElementById("input");
 
-        <button class="menu-button" onclick="fakeError()">
-            ⚠ Secret Button
-        </button>
+const messagesRef = ref(db, "messages");
 
-        <div class="counter">
-            Visitors: 0001247
-        </div>
-
-    </div>
-
-    <div class="content">
-
-        <div class="section-title">
-            Main Diary Window
-        </div>
-
-        <div class="diary-box" id="diaryBox">
-            <p>
-                Hello and welcome to my diary website 😎
-            </p>
-
-            <p>
-                There is nothing here yet because Jacob hasn't written anything.
-            </p>
-
-            <p>
-                Click buttons on the left side to do random stuff.
-            </p>
-
-            <p class="blink">
-                ONLINE NOW
-            </p>
-        </div>
-
-        <div class="statusbar" id="statusBar">
-            Status: Ready.
-        </div>
-
-    </div>
-
-</div>
-
-<div class="footer">
-    © 2004 Jacob's Diary — Made with Notepad and too much free time
-</div>
-
-<div class="popup" id="popup">
-    <h2>Guestbook</h2>
-
-    <p>
-        Nobody has signed the guestbook yet...
-    </p>
-
-    <button class="close-btn" onclick="closePopup()">
-        Close
-    </button>
-</div>
-
-<script>
-
-function showMessage(text){
-    document.getElementById("statusBar").innerText =
-        "Status: " + text;
+function updateInput() {
+    input.placeholder = "   " + input.value;
 }
 
-function showPopup(){
-    document.getElementById("popup").style.display = "block";
-}
+input.addEventListener("input", updateInput);
 
-function closePopup(){
-    document.getElementById("popup").style.display = "none";
-}
+input.addEventListener("keydown", (e) => {
 
-function changeBackground(){
+    if (e.key === "Enter") {
 
-    const colors = [
-        "#0f0f2b",
-        "#1a002e",
-        "#001f2f",
-        "#2b1200"
-    ];
+        const text = input.value.trim();
 
-    const random =
-        colors[Math.floor(Math.random() * colors.length)];
+        if (text.length < 1) return;
 
-    document.body.style.background = random;
-}
+        push(messagesRef, {
+            text: text
+        });
 
-function playBeep(){
+        input.value = "";
 
-    const audio = new Audio(
-        "https://www.soundjay.com/buttons/sounds/button-09.mp3"
-    );
+        updateInput();
+    }
+});
 
-    audio.play();
+onChildAdded(messagesRef, (data) => {
 
-    showMessage("Played epic sound effect.");
-}
+    const msg = data.val();
 
-function fakeError(){
+    const div = document.createElement("div");
 
-    alert(
-        "Windows has detected too much awesomeness on this website."
-    );
+    div.className = "line";
 
-    showMessage("You pressed the secret button.");
-}
+    div.textContent = "<> " + msg.text;
+
+    chat.appendChild(div);
+
+    chat.scrollTop = chat.scrollHeight;
+});
+
+updateInput();
 
 </script>
 
