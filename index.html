@@ -5,60 +5,54 @@
 <title>Jacob's Diary</title>
 
 <style>
-html, body {
-    margin: 0;
-    padding: 0;
-    background: black;
-    color: white;
-    overflow: hidden;
-    font-family: "Courier New", monospace;
+html,body{
+    margin:0;
+    background:black;
+    color:white;
+    overflow:hidden;
+    font-family:"Courier New",monospace;
+    font-size:22px;
 }
 
-#chat {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    right: 8px;
-    bottom: 35px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    font-size: 22px;
-    line-height: 1.3;
+#messages{
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    bottom:40px;
+    overflow-y:auto;
+    padding:6px;
+    white-space:pre-wrap;
 }
 
-.line {
-    margin-bottom: 2px;
+#type{
+    position:absolute;
+    bottom:0;
+    left:0;
+    width:100%;
+    border:none;
+    outline:none;
+    background:black;
+    color:white;
+    font-family:"Courier New",monospace;
+    font-size:22px;
+    padding:6px;
 }
 
-#input {
-    position: absolute;
-    bottom: 5px;
-    left: 8px;
-    right: 8px;
-    border: none;
-    outline: none;
-    background: black;
-    color: white;
-    font-size: 22px;
-    font-family: "Courier New", monospace;
-}
-
-#input::placeholder {
-    color: white;
+#type::placeholder{
+    color:white;
 }
 </style>
 </head>
 
 <body>
 
-<div id="chat"></div>
+<div id="messages"></div>
 
 <input
-id="input"
-type="text"
+id="type"
 autocomplete="off"
-autofocus
-placeholder="   "
+placeholder=" "
 >
 
 <script type="module">
@@ -81,60 +75,59 @@ const firebaseConfig = {
     projectId: "jacob-chat",
     storageBucket: "jacob-chat.firebasestorage.app",
     messagingSenderId: "554355410181",
-    appId: "1:554355410181:web:250c29e43f29cfb8b4e36c",
-    measurementId: "G-XWZ8N5219K"
+    appId: "1:554355410181:web:250c29e43f29cfb8b4e36c"
 };
 
 const app = initializeApp(firebaseConfig);
 
 const db = getDatabase(app);
 
-const chat = document.getElementById("chat");
+const messages = document.getElementById("messages");
 
-const input = document.getElementById("input");
+const type = document.getElementById("type");
 
-const messagesRef = ref(db, "messages");
+const messagesRef = ref(db,"messages");
 
-function updateInput() {
-    input.placeholder = "   " + input.value;
+function updatePlaceholder(){
+    type.placeholder = " " + type.value;
 }
 
-input.addEventListener("input", updateInput);
+type.addEventListener("input",updatePlaceholder);
 
-input.addEventListener("keydown", (e) => {
+type.addEventListener("keydown",e=>{
 
-    if (e.key === "Enter") {
+    if(e.key==="Enter"){
 
-        const text = input.value.trim();
+        const text = type.value.trim();
 
-        if (text.length < 1) return;
+        if(!text) return;
 
-        push(messagesRef, {
-            text: text
+        push(messagesRef,{
+            text:text
         });
 
-        input.value = "";
+        type.value="";
 
-        updateInput();
+        updatePlaceholder();
     }
+
 });
 
-onChildAdded(messagesRef, (data) => {
+onChildAdded(messagesRef,data=>{
 
     const msg = data.val();
 
     const div = document.createElement("div");
 
-    div.className = "line";
-
     div.textContent = "<> " + msg.text;
 
-    chat.appendChild(div);
+    messages.appendChild(div);
 
-    chat.scrollTop = chat.scrollHeight;
+    messages.scrollTop = messages.scrollHeight;
+
 });
 
-updateInput();
+updatePlaceholder();
 
 </script>
 
