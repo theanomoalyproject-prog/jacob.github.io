@@ -1,3 +1,6 @@
+Yes, that was the code for the `<script>` tag, but here is the **entire, complete HTML file** from `<!DOCTYPE html>` to `</html>`. You can copy and paste this directly into your file to replace everything:
+
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -58,18 +61,8 @@ button{
     cursor:pointer;
 }
 
-#send{
-    right:15%;
-    width:15%;
-    background:#00aa44;
-}
-
-#clear{
-    right:0;
-    width:15%;
-    background:#aa0000;
-    color:white;
-}
+#send{right:15%;width:15%;background:#00aa44;}
+#clear{right:0;width:15%;background:#aa0000;color:white;}
 </style>
 </head>
 
@@ -84,233 +77,184 @@ button{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-
 import {
-getDatabase,
-ref,
-push,
-onChildAdded,
-remove,
-set,
-onDisconnect
+    getDatabase, ref, push, onChildAdded, onChildRemoved, remove, onDisconnect, set
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
-apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
-authDomain: "jacob-chat.firebaseapp.com",
-databaseURL: "https://jacob-chat-default-rtdb.europe-west1.firebasedatabase.app",
-projectId: "jacob-chat",
-storageBucket: "jacob-chat.firebasestorage.app",
-messagingSenderId: "554355410181",
-appId: "1:554355410181:web:250c29e43f29cfb8b4e36c"
+    apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
+    authDomain: "jacob-chat.firebaseapp.com",
+    databaseURL: "https://jacob-chat-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "jacob-chat",
+    storageBucket: "jacob-chat.firebasestorage.app",
+    messagingSenderId: "554355410181",
+    appId: "1:554355410181:web:250c29e43f29cfb8b4e36c"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const messagesRef = ref(db,"messages");
+const messagesRef = ref(db, "messages");
+const presenceRef = ref(db, "presence"); // New node for active connections
 
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 
 let username = "anon";
-
-/* unique session */
-const sessionId = Math.random().toString(16).slice(2);
+let myUserRef = null; // Reference to track this session's presence node
 
 /* focus */
-window.addEventListener("load",()=>input.focus());
-window.addEventListener("click",()=>input.focus());
+window.addEventListener("load", () => input.focus());
+window.addEventListener("click", () => input.focus());
 
-function time(){
-return new Date().toLocaleTimeString([], {
-hour:"2-digit",
-minute:"2-digit"
-});
+function time() {
+    return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-/* typing animation */
-function typeText(element, text, speed = 32){
-
-let i = 0;
-
-function step(){
-
-if(i < text.length){
-element.textContent += text[i];
-i++;
-setTimeout(step, speed);
+/* TYPEWRITER (MIDDLE SPEED) */
+function typeText(element, text, speed = 32) {
+    let i = 0;
+    function step() {
+        if (i < text.length) {
+            element.textContent += text[i];
+            i++;
+            setTimeout(step, speed);
+        }
+    }
+    step();
 }
 
+/* MESSAGE */
+function createMessage(name, text, timeText, color = "#00ff66") {
+    const div = document.createElement("div");
+    div.className = "msg";
+
+    /* left */
+    const left = document.createElement("div");
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = `<${name}> `;
+    nameSpan.style.color = color;
+
+    const textSpan = document.createElement("span");
+
+    left.appendChild(nameSpan);
+    left.appendChild(textSpan);
+
+    /* right */
+    const right = document.createElement("div");
+    right.style.color = "gray";
+    right.textContent = timeText;
+
+    div.appendChild(left);
+    div.appendChild(right);
+
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+
+    /* animation */
+    typeText(textSpan, text, 32);
 }
 
-step();
+/* PRESENCE MANAGEMENT */
+function setUserPresence() {
+    // If a presence reference already exists, remove it first
+    if (myUserRef) {
+        remove(myUserRef);
+    }
+
+    // Push a new session node under presence
+    myUserRef = push(presenceRef);
+    
+    // Write current username
+    set(myUserRef, { name: username });
+
+    // Set up hook to delete this node from Firebase when the connection closes
+    onDisconnect(myUserRef).remove();
 }
 
-/* message builder */
-function createMessage(name, text, timeText, color="#00ff66"){
+/* COMMANDS */
+function handleCommands(text) {
+    if (text.startsWith("?name ")) {
+        const oldName = username;
+        username = text.replace("?name ", "").trim() || "anon";
+        
+        // Update presence to reflect name change without breaking connection
+        if (myUserRef) {
+            set(myUserRef, { name: username });
+        }
+        
+        createMessage("system", `${oldName} changed their name to ${username}`, time(), "gray");
+        return true;
+    }
 
-const div = document.createElement("div");
-div.className="msg";
+    if (text === "?help") {
+        const help =
+            "Commands:\n\n" +
+            "?name name - Sets your name\n" +
+            "?help - Shows this help menu";
 
-const left = document.createElement("div");
+        createMessage("system", help, time(), "gray");
+        return true;
+    }
 
-const nameSpan = document.createElement("span");
-nameSpan.textContent = `<${name}> `;
-nameSpan.style.color = color;
-
-const textSpan = document.createElement("span");
-
-left.appendChild(nameSpan);
-left.appendChild(textSpan);
-
-const right = document.createElement("div");
-right.style.color="gray";
-right.textContent=timeText;
-
-div.appendChild(left);
-div.appendChild(right);
-
-messages.appendChild(div);
-
-messages.scrollTop = messages.scrollHeight;
-
-typeText(textSpan, text, 32);
+    return false;
 }
 
-/* system message */
-function systemMessage(text){
+/* SEND */
+function send() {
+    const text = input.value.trim();
+    if (!text) return;
 
-createMessage(
-"system",
-text,
-time(),
-"gray"
-);
+    if (handleCommands(text)) {
+        input.value = "";
+        return;
+    }
 
+    push(messagesRef, {
+        text,
+        name: username,
+        time: time()
+    });
+
+    input.value = "";
 }
 
-/* user presence */
-const userRef = ref(db,"presence/"+sessionId);
+document.getElementById("send").onclick = send;
 
-set(userRef,{
-online:true
-});
-
-/* disconnect cleanup */
-onDisconnect(userRef).remove();
-
-/* JOIN MESSAGE */
-push(messagesRef,{
-system:true,
-text:`${username} left the chat`,
-time:time()
-});
-
-/* LEAVE MESSAGE */
-window.addEventListener("beforeunload",()=>{
-
-push(messagesRef,{
-system:true,
-text:`${username} joined the chat`,
-time:time()
-});
-
-});
-
-/* commands */
-function handleCommands(text){
-
-if(text.startsWith("?name ")){
-
-username = text.replace("?name ","").trim() || "anon";
-
-systemMessage(`name changed to ${username}`);
-
-return true;
-}
-
-if(text === "?help"){
-
-const help =
-"Commands:\n\n" +
-"?name name - Sets your name\n" +
-"?help - Shows this help menu";
-
-systemMessage(help);
-
-return true;
-}
-
-return false;
-}
-
-/* send */
-function send(){
-
-const text = input.value.trim();
-
-if(!text) return;
-
-if(handleCommands(text)){
-input.value="";
-return;
-}
-
-push(messagesRef,{
-text,
-name:username,
-time:time()
+input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") send();
 });
 
-input.value="";
-}
-
-document.getElementById("send").onclick=send;
-
-input.addEventListener("keydown",(e)=>{
-
-if(e.key==="Enter"){
-send();
-}
-
-});
-
-document.getElementById("clear").onclick=()=>{
-
-remove(messagesRef);
-messages.innerHTML="";
-
+document.getElementById("clear").onclick = () => {
+    remove(messagesRef);
+    messages.innerHTML = "";
 };
 
-/* render */
-onChildAdded(messagesRef,(snap)=>{
+/* CHAT MESSAGES LISTENERS */
+onChildAdded(messagesRef, (snap) => {
+    const msg = snap.val();
+    createMessage(msg.name, msg.text, msg.time);
+});
 
-const msg = snap.val();
+/* ROOM PRESENCE LISTENERS */
+// Initialize presence setup for the local user
+setUserPresence();
 
-/* system */
-if(msg.system){
+// Listen for new users arriving
+onChildAdded(presenceRef, (snap) => {
+    const user = snap.val();
+    createMessage("system", `${user.name} joined the room`, time(), "gray");
+});
 
-createMessage(
-"system",
-msg.text,
-msg.time,
-"gray"
-);
-
-return;
-}
-
-/* normal */
-createMessage(
-msg.name,
-msg.text,
-msg.time
-);
-
+// Listen for users disconnecting/leaving
+onChildRemoved(presenceRef, (snap) => {
+    const user = snap.val();
+    createMessage("system", `${user.name} left the room`, time(), "gray");
 });
 
 </script>
 
 </body>
 </html>
+
+```
