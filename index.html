@@ -26,6 +26,10 @@ html,body{
     white-space:pre-wrap;
 }
 
+.msg{
+    margin-bottom:3px;
+}
+
 /* input */
 #input{
     position:absolute;
@@ -64,10 +68,6 @@ button{
     background:#aa0000;
     color:white;
 }
-
-.msg{
-    margin-bottom:3px;
-}
 </style>
 </head>
 
@@ -105,25 +105,29 @@ const clear = document.getElementById("clear");
 
 const messagesRef = ref(db,"messages");
 
-/* stable per-tab identity */
-let userId = localStorage.getItem("chat_id");
-if(!userId){
-    userId = Math.random().toString(16).slice(2);
-    localStorage.setItem("chat_id", userId);
+/* =========================
+   TRUE UNIQUE TAB SYSTEM
+========================= */
+
+/* every tab gets UNIQUE id (NOT localStorage) */
+const tabId = Math.random().toString(16).slice(2);
+
+/* deterministic color from id */
+function colorFromId(id){
+    let hash = 0;
+    for(let i=0;i<id.length;i++){
+        hash = id.charCodeAt(i) + ((hash<<5)-hash);
+    }
+    const colors = ["#00ff66","#66aaff","#ff6666","#ffcc00","#cc66ff","#66ffcc","#ff66aa"];
+    return colors[Math.abs(hash) % colors.length];
 }
 
-/* stable per-tab color */
-let userColor = localStorage.getItem("chat_color");
-if(!userColor){
-    const colors = ["#00ff66","#66aaff","#ff6666","#ffcc00","#cc66ff","#66ffcc"];
-    userColor = colors[Math.floor(Math.random()*colors.length)];
-    localStorage.setItem("chat_color", userColor);
-}
+const userColor = colorFromId(tabId);
 
-/* name system */
+/* name */
 let username = "anon";
 
-/* always focus input */
+/* always focus */
 function focus(){
     input.focus();
 }
@@ -158,12 +162,13 @@ input.addEventListener("keydown",(e)=>{
 
 send.addEventListener("click",sendMessage);
 
+/* clear ALL messages (global) */
 clear.addEventListener("click",()=>{
     remove(messagesRef);
     messages.innerHTML="";
 });
 
-/* receive messages */
+/* receive */
 onChildAdded(messagesRef,(data)=>{
 
     const msg = data.val();
@@ -175,21 +180,16 @@ onChildAdded(messagesRef,(data)=>{
     const div = document.createElement("div");
     div.className = "msg";
 
-    /* IMPORTANT FIX:
-       NO innerHTML, no broken < > */
-    div.textContent = `<${name}> ${text}`;
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = `<${name}>`;
+    nameSpan.style.color = color;
 
-    /* apply colour ONLY to name by splitting safely */
-    const namePart = document.createElement("span");
-    namePart.style.color = color;
-    namePart.textContent = `<${name}>`;
+    const textSpan = document.createElement("span");
+    textSpan.textContent = ` ${text}`;
+    textSpan.style.color = "white";
 
-    const textPart = document.createElement("span");
-    textPart.textContent = ` ${text}`;
-
-    div.textContent = "";
-    div.appendChild(namePart);
-    div.appendChild(textPart);
+    div.appendChild(nameSpan);
+    div.appendChild(textSpan);
 
     messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
