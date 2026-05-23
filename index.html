@@ -26,9 +26,10 @@ html,body{
 .msg{
     display:flex;
     justify-content:space-between;
-    align-items:center;
+    align-items:flex-start;
     margin-bottom:6px;
     gap:10px;
+    line-height:1.3;
 }
 
 #input{
@@ -105,25 +106,28 @@ function time(){
 return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
 }
 
-/* TYPEWRITER ENGINE */
-function typeText(element, text, speed = 20){
+/* SLOW TYPEWRITER (VERY CLEAR NOW) */
+function typeText(element, text, speed = 45){
 let i = 0;
+
 function step(){
-if(i <= text.length){
-element.textContent = text.substring(0,i);
+if(i < text.length){
+element.textContent += text[i];
 i++;
 setTimeout(step, speed);
 }
 }
+
 step();
 }
 
-/* CREATE MESSAGE LINE (ANIMATED) */
+/* MESSAGE BUILDER */
 function createMessage(name, text, timeText, color="#00ff66"){
 
 const div = document.createElement("div");
 div.className="msg";
 
+/* left */
 const left = document.createElement("div");
 
 const nameSpan = document.createElement("span");
@@ -135,6 +139,7 @@ const textSpan = document.createElement("span");
 left.appendChild(nameSpan);
 left.appendChild(textSpan);
 
+/* right */
 const right = document.createElement("div");
 right.style.color="gray";
 right.textContent=timeText;
@@ -145,8 +150,8 @@ div.appendChild(right);
 messages.appendChild(div);
 messages.scrollTop = messages.scrollHeight;
 
-/* animate ONLY message text */
-typeText(textSpan, text, 18);
+/* IMPORTANT: slow visible typing */
+typeText(textSpan, text, 55);
 }
 
 /* COMMANDS */
@@ -157,12 +162,15 @@ username = text.replace("?name ","").trim() || "anon";
 return true;
 }
 
+/* FIXED HELP FORMAT */
 if(text === "?help"){
 
-const helpText =
-"Commands:\n\n?name name - Sets your name\n?help - Shows this help menu";
+const help =
+"Commands:\n\n" +
+"?name name - Sets your name\n" +
+"?help - Shows this help menu";
 
-createMessage("system", helpText, time(), "gray");
+createMessage("system", help, time(), "gray");
 return true;
 }
 
@@ -200,7 +208,7 @@ remove(messagesRef);
 messages.innerHTML="";
 };
 
-/* RENDER FIREBASE MESSAGES */
+/* RENDER */
 onChildAdded(messagesRef,(snap)=>{
 
 const msg = snap.val();
