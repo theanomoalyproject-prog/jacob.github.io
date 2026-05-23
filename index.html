@@ -58,8 +58,18 @@ button{
     cursor:pointer;
 }
 
-#send{right:15%;width:15%;background:#00aa44;}
-#clear{right:0;width:15%;background:#aa0000;color:white;}
+#send{
+    right:15%;
+    width:15%;
+    background:#00aa44;
+}
+
+#clear{
+    right:0;
+    width:15%;
+    background:#aa0000;
+    color:white;
+}
 </style>
 </head>
 
@@ -74,8 +84,15 @@ button{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+
 import {
-getDatabase, ref, push, onChildAdded, remove
+getDatabase,
+ref,
+push,
+onChildAdded,
+remove,
+set,
+onDisconnect
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -98,36 +115,44 @@ const input = document.getElementById("input");
 
 let username = "anon";
 
+/* unique session */
+const sessionId = Math.random().toString(16).slice(2);
+
 /* focus */
 window.addEventListener("load",()=>input.focus());
 window.addEventListener("click",()=>input.focus());
 
 function time(){
-return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+return new Date().toLocaleTimeString([], {
+hour:"2-digit",
+minute:"2-digit"
+});
 }
 
-/* TYPEWRITER (MIDDLE SPEED) */
+/* typing animation */
 function typeText(element, text, speed = 32){
+
 let i = 0;
 
 function step(){
+
 if(i < text.length){
 element.textContent += text[i];
 i++;
 setTimeout(step, speed);
 }
+
 }
 
 step();
 }
 
-/* MESSAGE */
+/* message builder */
 function createMessage(name, text, timeText, color="#00ff66"){
 
 const div = document.createElement("div");
 div.className="msg";
 
-/* left */
 const left = document.createElement("div");
 
 const nameSpan = document.createElement("span");
@@ -139,7 +164,6 @@ const textSpan = document.createElement("span");
 left.appendChild(nameSpan);
 left.appendChild(textSpan);
 
-/* right */
 const right = document.createElement("div");
 right.style.color="gray";
 right.textContent=timeText;
@@ -148,17 +172,61 @@ div.appendChild(left);
 div.appendChild(right);
 
 messages.appendChild(div);
+
 messages.scrollTop = messages.scrollHeight;
 
-/* animation */
 typeText(textSpan, text, 32);
 }
 
-/* COMMANDS */
+/* system message */
+function systemMessage(text){
+
+createMessage(
+"system",
+text,
+time(),
+"gray"
+);
+
+}
+
+/* user presence */
+const userRef = ref(db,"presence/"+sessionId);
+
+set(userRef,{
+online:true
+});
+
+/* disconnect cleanup */
+onDisconnect(userRef).remove();
+
+/* JOIN MESSAGE */
+push(messagesRef,{
+system:true,
+text:`${username} joined the chat`,
+time:time()
+});
+
+/* LEAVE MESSAGE */
+window.addEventListener("beforeunload",()=>{
+
+push(messagesRef,{
+system:true,
+text:`${username} left the chat`,
+time:time()
+});
+
+});
+
+/* commands */
 function handleCommands(text){
 
 if(text.startsWith("?name ")){
+
 username = text.replace("?name ","").trim() || "anon";
+
+systemMessage(`name changed to ${username}`);
+
 return true;
 }
 
@@ -169,17 +237,19 @@ const help =
 "?name name - Sets your name\n" +
 "?help - Shows this help menu";
 
-createMessage("system", help, time(), "gray");
+systemMessage(help);
+
 return true;
 }
 
 return false;
 }
 
-/* SEND */
+/* send */
 function send(){
 
 const text = input.value.trim();
+
 if(!text) return;
 
 if(handleCommands(text)){
@@ -199,19 +269,39 @@ input.value="";
 document.getElementById("send").onclick=send;
 
 input.addEventListener("keydown",(e)=>{
-if(e.key==="Enter") send();
+
+if(e.key==="Enter"){
+send();
+}
+
 });
 
 document.getElementById("clear").onclick=()=>{
+
 remove(messagesRef);
 messages.innerHTML="";
+
 };
 
-/* RENDER */
+/* render */
 onChildAdded(messagesRef,(snap)=>{
 
 const msg = snap.val();
 
+/* system */
+if(msg.system){
+
+createMessage(
+"system",
+msg.text,
+msg.time,
+"gray"
+);
+
+return;
+}
+
+/* normal */
 createMessage(
 msg.name,
 msg.text,
