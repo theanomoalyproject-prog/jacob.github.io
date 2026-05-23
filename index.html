@@ -12,7 +12,6 @@ html,body{
     overflow:hidden;
 }
 
-/* messages */
 #messages{
     position:fixed;
     top:0;
@@ -24,7 +23,6 @@ html,body{
     color:white;
 }
 
-/* message row */
 .msg{
     display:flex;
     justify-content:space-between;
@@ -33,18 +31,6 @@ html,body{
     gap:10px;
 }
 
-.left{
-    display:flex;
-    gap:6px;
-}
-
-.time{
-    color:gray;
-    font-size:12px;
-    white-space:nowrap;
-}
-
-/* INPUT AREA (BIGGER + MORE VISIBLE) */
 #input{
     position:fixed;
     bottom:0;
@@ -59,18 +45,9 @@ html,body{
     font-size:16px;
     padding:10px;
     box-sizing:border-box;
-
-    /* blinking caret feel */
     caret-color:#00ff66;
 }
 
-/* show focus clearly (mobile helps a lot) */
-#input:focus{
-    border-top:1px solid #00ff66;
-    box-shadow:0 0 10px rgba(0,255,102,0.2);
-}
-
-/* buttons */
 button{
     position:fixed;
     bottom:0;
@@ -78,38 +55,10 @@ button{
     border:none;
     font-family:"Courier New",monospace;
     cursor:pointer;
-    font-size:14px;
 }
 
-#send{
-    right:15%;
-    width:15%;
-    background:#00aa44;
-}
-
-#clear{
-    right:0;
-    width:15%;
-    background:#aa0000;
-    color:white;
-}
-
-/* ICONS */
-.icon{
-    width:18px;
-    height:18px;
-    cursor:pointer;
-    margin-left:8px;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-}
-
-.icon svg{
-    width:18px;
-    height:18px;
-    display:block;
-}
+#send{right:15%;width:15%;background:#00aa44;}
+#clear{right:0;width:15%;background:#aa0000;color:white;}
 </style>
 </head>
 
@@ -125,7 +74,7 @@ button{
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import {
-getDatabase, ref, push, onChildAdded, remove, update
+getDatabase, ref, push, onChildAdded, remove
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -147,35 +96,60 @@ const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 
 let username = "anon";
-let admin = false;
 
-/* auto focus on load (IMPORTANT FIX) */
-function focusInput(){
-input.focus();
-}
-window.addEventListener("load",focusInput);
-window.addEventListener("click",focusInput);
-window.addEventListener("touchstart",focusInput);
-
-/* color system */
-const tabId = Math.random().toString(16).slice(2);
-
-function colorFromId(id){
-let hash = 0;
-for(let i=0;i<id.length;i++){
-hash = id.charCodeAt(i) + ((hash<<5)-hash);
-}
-const colors = ["#00ff66","#66aaff","#ff6666","#ffcc00","#cc66ff","#66ffcc","#ff66aa"];
-return colors[Math.abs(hash)%colors.length];
-}
-
-const userColor = colorFromId(tabId);
+/* focus */
+window.addEventListener("load",()=>input.focus());
+window.addEventListener("click",()=>input.focus());
 
 function time(){
 return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
 }
 
-/* commands */
+/* TYPEWRITER ENGINE */
+function typeText(element, text, speed = 20){
+let i = 0;
+function step(){
+if(i <= text.length){
+element.textContent = text.substring(0,i);
+i++;
+setTimeout(step, speed);
+}
+}
+step();
+}
+
+/* CREATE MESSAGE LINE (ANIMATED) */
+function createMessage(name, text, timeText, color="#00ff66"){
+
+const div = document.createElement("div");
+div.className="msg";
+
+const left = document.createElement("div");
+
+const nameSpan = document.createElement("span");
+nameSpan.textContent = `<${name}> `;
+nameSpan.style.color = color;
+
+const textSpan = document.createElement("span");
+
+left.appendChild(nameSpan);
+left.appendChild(textSpan);
+
+const right = document.createElement("div");
+right.style.color="gray";
+right.textContent=timeText;
+
+div.appendChild(left);
+div.appendChild(right);
+
+messages.appendChild(div);
+messages.scrollTop = messages.scrollHeight;
+
+/* animate ONLY message text */
+typeText(textSpan, text, 18);
+}
+
+/* COMMANDS */
 function handleCommands(text){
 
 if(text.startsWith("?name ")){
@@ -183,39 +157,19 @@ username = text.replace("?name ","").trim() || "anon";
 return true;
 }
 
-if(text.startsWith("?proveownership ")){
-if(text.split(" ")[1] === "ABCXY"){
-admin = true;
-alert("Admin enabled");
-}
-return true;
-}
-
 if(text === "?help"){
-addLocal(`Commands:
 
-- ?name <name> Sets your name
-- ?help Shows this help menu`,"system");
+const helpText =
+"Commands:\n\n?name name - Sets your name\n?help - Shows this help menu";
+
+createMessage("system", helpText, time(), "gray");
 return true;
 }
 
 return false;
 }
 
-/* local */
-function addLocal(text,name){
-const div = document.createElement("div");
-div.className="msg";
-
-div.innerHTML = `
-<div><span style="color:gray">&lt;${name}&gt;</span> ${text}</div>
-<div class="time">${time()}</div>
-`;
-
-messages.appendChild(div);
-}
-
-/* send */
+/* SEND */
 function send(){
 
 const text = input.value.trim();
@@ -229,7 +183,6 @@ return;
 push(messagesRef,{
 text,
 name:username,
-color:userColor,
 time:time()
 });
 
@@ -247,78 +200,16 @@ remove(messagesRef);
 messages.innerHTML="";
 };
 
-/* render */
+/* RENDER FIREBASE MESSAGES */
 onChildAdded(messagesRef,(snap)=>{
 
 const msg = snap.val();
-const id = snap.key;
 
-const div = document.createElement("div");
-div.className="msg";
-
-/* left */
-const left = document.createElement("div");
-
-const nameSpan = document.createElement("span");
-nameSpan.textContent = `<${msg.name}> `;
-nameSpan.style.color = msg.color;
-
-const textSpan = document.createElement("span");
-textSpan.textContent = msg.text;
-
-left.appendChild(nameSpan);
-left.appendChild(textSpan);
-
-/* right */
-const right = document.createElement("div");
-right.style.display="flex";
-right.style.alignItems="center";
-
-/* admin icons */
-if(admin){
-
-const del = document.createElement("span");
-del.className="icon";
-del.innerHTML = `
-<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
-<polyline points="3 6 5 6 21 6"/>
-<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-<path d="M10 11v6"/>
-<path d="M14 11v6"/>
-<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-</svg>`;
-del.onclick=()=> remove(ref(db,"messages/"+id));
-
-const edit = document.createElement("span");
-edit.className="icon";
-edit.innerHTML = `
-<svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
-<path d="M12 20h9"/>
-<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-</svg>`;
-edit.onclick=()=>{
-
-const newText = prompt("Edit message:",msg.text);
-if(newText !== null){
-update(ref(db,"messages/"+id),{text:newText});
-}
-};
-
-right.appendChild(del);
-right.appendChild(edit);
-}
-
-const t = document.createElement("span");
-t.className="time";
-t.textContent = msg.time;
-
-right.appendChild(t);
-
-div.appendChild(left);
-div.appendChild(right);
-
-messages.appendChild(div);
-messages.scrollTop = messages.scrollHeight;
+createMessage(
+msg.name,
+msg.text,
+msg.time
+);
 
 });
 
