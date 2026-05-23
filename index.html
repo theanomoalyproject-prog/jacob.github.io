@@ -12,12 +12,13 @@ html,body{
     font-size:20px;
 }
 
+/* messages */
 #messages{
     position:absolute;
     top:0;
     left:0;
     right:0;
-    bottom:40px;
+    bottom:45px;
     overflow-y:auto;
     padding:8px;
     color:white;
@@ -28,6 +29,7 @@ html,body{
     margin-bottom:2px;
 }
 
+/* input */
 #input{
     position:absolute;
     bottom:0;
@@ -40,10 +42,23 @@ html,body{
     font-family:"Courier New",monospace;
     font-size:20px;
     padding:8px;
+    caret-color:#00ff66;
 }
 
-#input::placeholder{
+/* blinking fake cursor */
+#cursor{
+    position:absolute;
+    bottom:45px;
+    left:8px;
     color:#00ff66;
+    font-family:"Courier New",monospace;
+    font-size:20px;
+    animation:blink 1s infinite;
+    pointer-events:none;
+}
+
+@keyframes blink{
+    50%{opacity:0;}
 }
 </style>
 </head>
@@ -51,13 +66,21 @@ html,body{
 <body>
 
 <div id="messages"></div>
+<div id="cursor">|</div>
 
 <input id="input" autocomplete="off" placeholder=" ">
 
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded }
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+
+import {
+    getDatabase,
+    ref,
+    push,
+    onChildAdded
+}
 from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -75,8 +98,17 @@ const db = getDatabase(app);
 
 const input = document.getElementById("input");
 const messages = document.getElementById("messages");
+
 const messagesRef = ref(db,"messages");
 
+/* auto focus so you can always type */
+function focusInput(){
+    input.focus();
+}
+window.addEventListener("load",focusInput);
+window.addEventListener("click",focusInput);
+
+/* send message */
 input.addEventListener("keydown",(e)=>{
 
     if(e.key==="Enter"){
@@ -90,6 +122,7 @@ input.addEventListener("keydown",(e)=>{
     }
 });
 
+/* receive messages */
 onChildAdded(messagesRef,(data)=>{
 
     const msg = data.val();
