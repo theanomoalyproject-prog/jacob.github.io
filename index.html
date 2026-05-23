@@ -33,12 +33,6 @@ html,body{
     gap:10px;
 }
 
-/* left chat text */
-.left{
-    display:inline;
-}
-
-/* timestamp */
 .time{
     color:gray;
     font-size:12px;
@@ -136,12 +130,7 @@ const userColor = colorFromId(tabId);
 
 let username = "anon";
 
-/* COMMAND SYSTEM */
-const commands = {
-    "?name": "Sets your name",
-    "?help": "Shows this help menu"
-};
-
+/* time */
 function getTime(){
     const d = new Date();
     return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
@@ -155,34 +144,57 @@ window.addEventListener("load",focus);
 window.addEventListener("click",focus);
 window.addEventListener("keydown",focus);
 
+/* LOCAL HELP (ONLY FOR YOU) */
+function showHelpLocal(){
+
+    const help =
+`Commands:
+
+- ?name <name> Sets your name
+- ?help Shows this help menu`;
+
+    const div = document.createElement("div");
+    div.className = "msg";
+
+    const left = document.createElement("div");
+
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = "<system>";
+    nameSpan.style.color = "#aaaaaa";
+
+    const textSpan = document.createElement("span");
+    textSpan.textContent = " " + help;
+
+    left.appendChild(nameSpan);
+    left.appendChild(textSpan);
+
+    const timeSpan = document.createElement("div");
+    timeSpan.className = "time";
+    timeSpan.textContent = getTime();
+
+    div.appendChild(left);
+    div.appendChild(timeSpan);
+
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
 /* send */
 function sendMessage(){
 
     const text = input.value.trim();
     if(!text) return;
 
-    /* NAME COMMAND */
+    /* NAME */
     if(text.startsWith("?name ")){
         username = text.replace("?name ","").trim() || "anon";
         input.value="";
         return;
     }
 
-    /* HELP COMMAND */
+    /* HELP (LOCAL ONLY) */
     if(text === "?help"){
-        const helpText =
-            "Commands:\n\n" +
-            Object.entries(commands)
-                .map(([cmd,desc]) => `- ${cmd} ${desc}`)
-                .join("\n");
-
-        push(messagesRef,{
-            text: helpText,
-            name: "system",
-            color: "#aaaaaa",
-            time: getTime()
-        });
-
+        showHelpLocal();
         input.value="";
         return;
     }
