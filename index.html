@@ -66,7 +66,6 @@ button{
 <body>
 
 <div id="messages"></div>
-
 <input id="input" autocomplete="off">
 <button id="send">SEND</button>
 <button id="clear">CLEAR</button>
@@ -90,13 +89,12 @@ appId: "1:554355410181:web:250c29e43f29cfb8b4e36c"
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
 const messagesRef = ref(db,"messages");
 
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 
-/* ---------------- COOKIE ID SYSTEM ---------------- */
+/* ---------------- COOKIE SYSTEM ---------------- */
 
 function setCookie(name, value, days){
     let expires = "";
@@ -111,24 +109,25 @@ function setCookie(name, value, days){
 function getCookie(name){
     const cookies = document.cookie.split("; ");
     for(let c of cookies){
-        const [key, value] = c.split("=");
+        const [key,value] = c.split("=");
         if(key === name) return value;
     }
     return null;
 }
 
-/* persistent identity */
 let userId = getCookie("userId");
-
 if(!userId){
-    userId = Math.random().toString(36).substring(2, 10);
+    userId = Math.random().toString(36).substring(2,10);
     setCookie("userId", userId, 365);
 }
 
-/* username (still changeable) */
 let username = getCookie("username") || "anon";
 
-/* ---------------- VISUAL ID COLOR ---------------- */
+/* ---------------- HELPERS ---------------- */
+
+function time(){
+    return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+}
 
 function hashColor(str){
     let hash = 0;
@@ -138,128 +137,157 @@ function hashColor(str){
     return `hsl(${hash % 360}, 80%, 60%)`;
 }
 
-/* focus */
-window.addEventListener("load",()=>input.focus());
-window.addEventListener("click",()=>input.focus());
-
-function time(){
-return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+/* TYPE EFFECT */
+function typeText(element, text, speed=32){
+    let i=0;
+    function step(){
+        if(i<text.length){
+            element.textContent += text[i++];
+            setTimeout(step,speed);
+        }
+    }
+    step();
 }
 
-/* TYPEWRITER */
-function typeText(element, text, speed = 32){
-let i = 0;
+/* ---------------- MESSAGE RENDER ---------------- */
 
-function step(){
-if(i < text.length){
-element.textContent += text[i];
-i++;
-setTimeout(step, speed);
-}
-}
+function createMessage(name,text,timeText,color="#00ff66"){
+    const div=document.createElement("div");
+    div.className="msg";
 
-step();
-}
+    const left=document.createElement("div");
 
-/* MESSAGE */
-function createMessage(name, text, timeText, color="#00ff66", uid=""){
+    const nameSpan=document.createElement("span");
+    nameSpan.textContent=`<${name}> `;
+    nameSpan.style.color=color;
 
-const div = document.createElement("div");
-div.className="msg";
+    const textSpan=document.createElement("span");
 
-const left = document.createElement("div");
+    left.appendChild(nameSpan);
+    left.appendChild(textSpan);
 
-const nameSpan = document.createElement("span");
-nameSpan.textContent = `<${name}> `;
-nameSpan.style.color = color;
+    const right=document.createElement("div");
+    right.style.color="gray";
+    right.textContent=timeText;
 
-const textSpan = document.createElement("span");
+    div.appendChild(left);
+    div.appendChild(right);
 
-left.appendChild(nameSpan);
-left.appendChild(textSpan);
+    messages.appendChild(div);
+    messages.scrollTop=messages.scrollHeight;
 
-const right = document.createElement("div");
-right.style.color="gray";
-right.textContent=timeText;
-
-div.appendChild(left);
-div.appendChild(right);
-
-messages.appendChild(div);
-messages.scrollTop = messages.scrollHeight;
-
-/* animation */
-typeText(textSpan, text, 32);
+    typeText(textSpan,text,32);
 }
 
-/* COMMANDS */
+/* ---------------- COMMANDS ---------------- */
+
 function handleCommands(text){
 
+/* name */
 if(text.startsWith("?name ")){
-username = text.replace("?name ","").trim() || "anon";
-setCookie("username", username, 365);
-return true;
+    username = text.replace("?name ","").trim() || "anon";
+    setCookie("username",username,365);
+    return true;
 }
 
+/* help */
 if(text === "?help"){
+    createMessage(
+        "system",
+        "?name name\n?msg user message\n?help",
+        time(),
+        "gray"
+    );
+    return true;
+}
 
-const help =
-"Commands:\n\n" +
-"?name name - Sets your name\n" +
-"?help - Shows this help menu";
+/* PRIVATE MESSAGE */
+if(text.startsWith("?msg ")){
+    const parts = text.split(" ");
+    const target = parts[1]?.toLowerCase();
+    const msg = parts.slice(2).join(" ");
 
-createMessage("system", help, time(), "gray");
-return true;
+    if(!target || !msg) return true;
+
+    push(messagesRef,{
+        text: msg,
+        name: username,
+        userId: userId,
+        to: target,
+        time: time(),
+        private: true
+    });
+
+    return true;
 }
 
 return false;
 }
 
-/* SEND */
+/* ---------------- SEND ---------------- */
+
 function send(){
+    const text = input.value.trim();
+    if(!text) return;
 
-const text = input.value.trim();
-if(!text) return;
+    if(handleCommands(text)){
+        input.value="";
+        return;
+    }
 
-if(handleCommands(text)){
-input.value="";
-return;
-}
+    push(messagesRef,{
+        text,
+        name: username,
+        userId: userId,
+        time: time(),
+        private:false
+    });
 
-push(messagesRef,{
-text,
-name:username,
-userId:userId,
-time:time()
-});
-
-input.value="";
+    input.value="";
 }
 
 document.getElementById("send").onclick=send;
 
 input.addEventListener("keydown",(e)=>{
-if(e.key==="Enter") send();
+    if(e.key==="Enter") send();
 });
 
 document.getElementById("clear").onclick=()=>{
-remove(messagesRef);
-messages.innerHTML="";
+    remove(messagesRef);
+    messages.innerHTML="";
 };
 
-/* RENDER */
+/* ---------------- RENDER ---------------- */
+
 onChildAdded(messagesRef,(snap)=>{
 
 const msg = snap.val();
 
-const color = hashColor(msg.userId || msg.name);
+const current = username.toLowerCase();
 
+/* PRIVATE FILTER */
+if(msg.private){
+    const isSender = msg.name === username;
+    const isReceiver = msg.to === current;
+
+    if(!isSender && !isReceiver) return;
+
+    createMessage(
+        `${msg.name} --> ${msg.to}`,
+        msg.text,
+        msg.time,
+        hashColor(msg.name)
+    );
+
+    return;
+}
+
+/* NORMAL MESSAGE */
 createMessage(
 msg.name,
 msg.text,
 msg.time,
-color,
-msg.userId
+hashColor(msg.userId || msg.name)
 );
 
 });
