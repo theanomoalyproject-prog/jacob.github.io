@@ -4,43 +4,101 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- Lucide icon library (vector icons) -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
 <style>
 html,body{
     margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
     background:black;
     font-family:"Courier New",monospace;
     overflow:hidden;
 }
 
+/* CHAT WINDOW */
 #messages{
-    position:absolute;
+    position:fixed;
     top:0;
     left:0;
     right:0;
     bottom:60px;
     overflow-y:auto;
-    padding:8px;
+    padding:10px;
     color:white;
+    font-size:clamp(14px,4vw,18px);
+    box-sizing:border-box;
 }
 
+/* MESSAGE ROW */
 .msg{
     display:flex;
     justify-content:space-between;
-    margin-bottom:6px;
     align-items:center;
+    margin-bottom:6px;
+    gap:10px;
 }
 
+/* LEFT SIDE */
 .left{
     display:flex;
     gap:6px;
+    flex-wrap:wrap;
 }
 
+/* TIMESTAMP */
 .time{
     color:gray;
     font-size:12px;
+    white-space:nowrap;
 }
 
+/* INPUT BAR */
+#input{
+    position:fixed;
+    bottom:0;
+    left:0;
+    width:65%;
+    height:60px;
+    background:black;
+    border:none;
+    outline:none;
+    color:white;
+    font-family:"Courier New",monospace;
+    font-size:16px;
+    padding-left:10px;
+    box-sizing:border-box;
+}
+
+/* BUTTONS */
+button{
+    position:fixed;
+    bottom:0;
+    height:60px;
+    border:none;
+    font-family:"Courier New",monospace;
+    cursor:pointer;
+}
+
+#send{
+    right:15%;
+    width:15%;
+    background:#00aa44;
+}
+
+#clear{
+    right:0;
+    width:15%;
+    background:#aa0000;
+    color:white;
+}
+
+/* ICON BUTTONS */
 .icon{
+    width:16px;
+    height:16px;
     cursor:pointer;
     margin-left:6px;
     color:#888;
@@ -49,30 +107,6 @@ html,body{
 .icon:hover{
     color:white;
 }
-
-#input{
-    position:absolute;
-    bottom:0;
-    left:0;
-    width:65%;
-    height:50px;
-    background:black;
-    border:none;
-    outline:none;
-    color:white;
-    font-family:"Courier New",monospace;
-}
-
-button{
-    position:absolute;
-    bottom:0;
-    height:50px;
-    border:none;
-    font-family:"Courier New",monospace;
-}
-
-#send{right:15%;width:15%;background:#00aa44;}
-#clear{right:0;width:15%;background:#aa0000;color:white;}
 </style>
 </head>
 
@@ -80,7 +114,7 @@ button{
 
 <div id="messages"></div>
 
-<input id="input">
+<input id="input" autocomplete="off">
 <button id="send">SEND</button>
 <button id="clear">CLEAR</button>
 
@@ -112,7 +146,7 @@ const input = document.getElementById("input");
 let username = "anon";
 let admin = false;
 
-/* FIXED: per-tab color restored */
+/* stable per-tab colour */
 const tabId = Math.random().toString(16).slice(2);
 
 function colorFromId(id){
@@ -120,10 +154,7 @@ let hash = 0;
 for(let i=0;i<id.length;i++){
 hash = id.charCodeAt(i) + ((hash<<5)-hash);
 }
-const colors = [
-"#00ff66","#66aaff","#ff6666",
-"#ffcc00","#cc66ff","#66ffcc","#ff66aa"
-];
+const colors = ["#00ff66","#66aaff","#ff6666","#ffcc00","#cc66ff","#66ffcc","#ff66aa"];
 return colors[Math.abs(hash)%colors.length];
 }
 
@@ -151,13 +182,10 @@ return true;
 }
 
 if(text === "?help"){
-addLocal(
-`Commands:
+addLocal(`Commands:
 
 - ?name <name> Sets your name
-- ?help Shows this help menu`,
-"system"
-);
+- ?help Shows this help menu`,"system");
 return true;
 }
 
@@ -225,10 +253,9 @@ div.className="msg";
 
 const left = document.createElement("div");
 
-/* 🔥 COLOR RESTORED HERE */
 const nameSpan = document.createElement("span");
 nameSpan.textContent = `<${msg.name}> `;
-nameSpan.style.color = msg.color || "#ffffff";
+nameSpan.style.color = msg.color || "#fff";
 
 const textSpan = document.createElement("span");
 textSpan.textContent = msg.text;
@@ -238,21 +265,23 @@ left.appendChild(textSpan);
 
 const right = document.createElement("div");
 right.style.display="flex";
+right.style.alignItems="center";
 
+/* time */
 const t = document.createElement("span");
 t.className="time";
 t.textContent = msg.time;
 
-/* admin tools */
+/* ADMIN ICONS (Lucide SVG) */
 if(admin){
 
-const del = document.createElement("span");
-del.textContent="🗑";
+const del = document.createElement("i");
+del.setAttribute("data-lucide","trash-2");
 del.className="icon";
 del.onclick=()=> remove(ref(db,"messages/"+id));
 
-const edit = document.createElement("span");
-edit.textContent="✏";
+const edit = document.createElement("i");
+edit.setAttribute("data-lucide","edit-3");
 edit.className="icon";
 edit.onclick=()=>{
 
@@ -268,6 +297,7 @@ right.appendChild(del);
 right.appendChild(edit);
 }
 
+/* render */
 right.appendChild(t);
 
 div.appendChild(left);
@@ -275,6 +305,9 @@ div.appendChild(right);
 
 messages.appendChild(div);
 messages.scrollTop = messages.scrollHeight;
+
+/* activate icons */
+lucide.createIcons();
 
 });
 
