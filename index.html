@@ -118,7 +118,7 @@ function getCookie(name){
 let userId = getCookie("userId");
 if(!userId){
     userId = Math.random().toString(36).substring(2,10);
-    setCookie("userId", userId, 365);
+    setCookie("userId",userId,365);
 }
 
 let username = getCookie("username") || "anon";
@@ -137,8 +137,7 @@ function hashColor(str){
     return `hsl(${hash % 360}, 80%, 60%)`;
 }
 
-/* TYPE EFFECT */
-function typeText(element, text, speed=32){
+function typeText(element,text,speed=32){
     let i=0;
     function step(){
         if(i<text.length){
@@ -149,7 +148,7 @@ function typeText(element, text, speed=32){
     step();
 }
 
-/* ---------------- MESSAGE RENDER ---------------- */
+/* ---------------- MESSAGE ---------------- */
 
 function createMessage(name,text,timeText,color="#00ff66"){
     const div=document.createElement("div");
@@ -183,18 +182,19 @@ function createMessage(name,text,timeText,color="#00ff66"){
 
 function handleCommands(text){
 
-/* name */
 if(text.startsWith("?name ")){
     username = text.replace("?name ","").trim() || "anon";
     setCookie("username",username,365);
     return true;
 }
 
-/* help */
+/* HELP (UPDATED) */
 if(text === "?help"){
     createMessage(
         "system",
-        "?name name\n?msg user message\n?help",
+        "?name name - sets your username\n" +
+        "?msg user message - sends a private message (only you + them can see it)\n" +
+        "?help - shows this help menu",
         time(),
         "gray"
     );
@@ -265,15 +265,27 @@ const msg = snap.val();
 
 const current = username.toLowerCase();
 
-/* PRIVATE FILTER */
+/* PRIVATE MESSAGE */
 if(msg.private){
+
     const isSender = msg.name === username;
     const isReceiver = msg.to === current;
 
     if(!isSender && !isReceiver) return;
 
+    let leftName;
+    let rightName;
+
+    if(isSender){
+        leftName = "You";
+        rightName = msg.to;
+    } else {
+        leftName = msg.name;
+        rightName = "You";
+    }
+
     createMessage(
-        `${msg.name} --> ${msg.to}`,
+        `${leftName} --> ${rightName}`,
         msg.text,
         msg.time,
         hashColor(msg.name)
