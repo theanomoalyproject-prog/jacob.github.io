@@ -58,23 +58,40 @@ button{
     cursor:pointer;
 }
 
-#send{right:15%;width:15%;background:#00aa44;}
-#clear{right:0;width:15%;background:#aa0000;color:white;}
+#send{
+    right:15%;
+    width:15%;
+    background:#00aa44;
+}
+
+#clear{
+    right:0;
+    width:15%;
+    background:#aa0000;
+    color:white;
+}
 </style>
 </head>
 
 <body>
 
 <div id="messages"></div>
+
 <input id="input" autocomplete="off">
+
 <button id="send">SEND</button>
 <button id="clear">CLEAR</button>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+
 import {
-getDatabase, ref, push, onChildAdded, remove
+getDatabase,
+ref,
+push,
+onChildAdded,
+remove
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -98,26 +115,44 @@ const input = document.getElementById("input");
 
 function setCookie(name,value,days){
     let expires="";
+
     if(days){
         const d=new Date();
-        d.setTime(d.getTime()+(days*24*60*60*1000));
+
+        d.setTime(
+            d.getTime()+(days*24*60*60*1000)
+        );
+
         expires="; expires="+d.toUTCString();
     }
-    document.cookie=name+"="+value+expires+"; path=/";
+
+    document.cookie=
+        name+"="+value+expires+"; path=/";
 }
 
 function getCookie(name){
+
     const cookies=document.cookie.split("; ");
+
     for(let c of cookies){
+
         const [k,v]=c.split("=");
+
         if(k===name) return v;
     }
+
     return null;
 }
 
 let userId=getCookie("userId");
+
 if(!userId){
-    userId=Math.random().toString(36).substring(2,10);
+
+    userId=
+        Math.random()
+        .toString(36)
+        .substring(2,10);
+
     setCookie("userId",userId,365);
 }
 
@@ -125,57 +160,99 @@ let username=getCookie("username")||"anon";
 
 /* ---------------- AUDIO ---------------- */
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const audioCtx =
+new (
+window.AudioContext ||
+window.webkitAudioContext
+)();
 
-function playTypeSound(base=180, volume=0.02){
+function playTypeSound(base=180,volume=0.02){
+
     const osc=audioCtx.createOscillator();
     const gain=audioCtx.createGain();
 
     osc.type="square";
-    osc.frequency.setValueAtTime(base+Math.random()*120,audioCtx.currentTime);
 
-    gain.gain.setValueAtTime(volume,audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.04);
+    osc.frequency.setValueAtTime(
+        base+Math.random()*120,
+        audioCtx.currentTime
+    );
+
+    gain.gain.setValueAtTime(
+        volume,
+        audioCtx.currentTime
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        audioCtx.currentTime+0.04
+    );
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
 
     osc.start();
-    osc.stop(audioCtx.currentTime+0.04);
+
+    osc.stop(
+        audioCtx.currentTime+0.04
+    );
 }
 
-/* input typing sound */
 function keySound(){
     playTypeSound(120,0.03);
 }
 
-/* unlock audio */
-window.addEventListener("click",()=>audioCtx.resume(),{once:true});
-window.addEventListener("keydown",()=>audioCtx.resume(),{once:true});
+window.addEventListener(
+"click",
+()=>audioCtx.resume(),
+{once:true}
+);
+
+window.addEventListener(
+"keydown",
+()=>audioCtx.resume(),
+{once:true}
+);
 
 /* ---------------- HELPERS ---------------- */
 
 function time(){
-    return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+
+    return new Date().toLocaleTimeString(
+        [],
+        {
+            hour:"2-digit",
+            minute:"2-digit"
+        }
+    );
 }
 
 function hashColor(str){
+
     let hash=0;
+
     for(let i=0;i<str.length;i++){
-        hash=str.charCodeAt(i)+((hash<<5)-hash);
+
+        hash=
+        str.charCodeAt(i)+
+        ((hash<<5)-hash);
     }
+
     return `hsl(${hash%360},80%,60%)`;
 }
 
-/* TYPEWRITER WITH SOUND */
+/* TYPEWRITER */
+
 function typeText(el,text,speed=32){
+
     let i=0;
 
     function step(){
+
         if(i<text.length){
+
             el.textContent+=text[i++];
 
-            // per-letter message sound (different from input)
             playTypeSound(220,0.015);
 
             setTimeout(step,speed);
@@ -187,13 +264,20 @@ function typeText(el,text,speed=32){
 
 /* ---------------- MESSAGE ---------------- */
 
-function createMessage(name,text,timeText,color="#00ff66"){
+function createMessage(
+    name,
+    text,
+    timeText,
+    color="#00ff66"
+){
+
     const div=document.createElement("div");
     div.className="msg";
 
     const left=document.createElement("div");
 
     const nameSpan=document.createElement("span");
+
     nameSpan.textContent=`<${name}> `;
     nameSpan.style.color=color;
 
@@ -203,6 +287,7 @@ function createMessage(name,text,timeText,color="#00ff66"){
     left.appendChild(textSpan);
 
     const right=document.createElement("div");
+
     right.style.color="gray";
     right.textContent=timeText;
 
@@ -210,7 +295,9 @@ function createMessage(name,text,timeText,color="#00ff66"){
     div.appendChild(right);
 
     messages.appendChild(div);
-    messages.scrollTop=messages.scrollHeight;
+
+    messages.scrollTop=
+    messages.scrollHeight;
 
     typeText(textSpan,text,32);
 }
@@ -219,32 +306,72 @@ function createMessage(name,text,timeText,color="#00ff66"){
 
 function handleCommands(text){
 
+/* NAME */
+
 if(text.startsWith("?name ")){
-    username=text.replace("?name ","").trim()||"anon";
-    setCookie("username",username,365);
+
+    const newName=
+    text.replace("?name ","").trim();
+
+    /* SPACE CHECK */
+    if(newName.includes(" ")){
+
+        createMessage(
+            "system",
+            "Error: name cannot contain a space",
+            time(),
+            "red"
+        );
+
+        return true;
+    }
+
+    username=newName||"anon";
+
+    setCookie(
+        "username",
+        username,
+        365
+    );
+
     return true;
 }
 
+/* HELP */
+
 if(text==="?help"){
+
     createMessage(
         "system",
-        "?name <name> - sets your username\n" +
-        "?msg <user> message - sends a private message (only you + them can see it)\n" +
+
+        "?name <name> - sets your username\n"+
+        "?msg <user> message - sends a private message (only you + them can see it)\n"+
         "?help - shows this help menu",
+
         time(),
         "gray"
     );
+
     return true;
 }
 
-if(text.startsWith("?msg ")){
-    const parts=text.split(" ");
-    const target=parts[1]?.toLowerCase();
-    const msg=parts.slice(2).join(" ");
+/* PRIVATE MESSAGE */
 
-    if(!target||!msg) return true;
+if(text.startsWith("?msg ")){
+
+    const parts=text.split(" ");
+
+    const target=
+    parts[1]?.toLowerCase();
+
+    const msg=
+    parts.slice(2).join(" ");
+
+    if(!target||!msg)
+    return true;
 
     push(messagesRef,{
+
         text:msg,
         name:username,
         userId:userId,
@@ -262,15 +389,19 @@ return false;
 /* ---------------- SEND ---------------- */
 
 function send(){
+
     const text=input.value.trim();
+
     if(!text) return;
 
     if(handleCommands(text)){
+
         input.value="";
         return;
     }
 
     push(messagesRef,{
+
         text,
         name:username,
         userId:userId,
@@ -281,15 +412,27 @@ function send(){
     input.value="";
 }
 
-document.getElementById("send").onclick=send;
+document
+.getElementById("send")
+.onclick=send;
 
-input.addEventListener("keydown",(e)=>{
-    if(e.key==="Enter") send();
-    if(e.key.length===1) keySound();
+input.addEventListener(
+"keydown",
+(e)=>{
+
+    if(e.key==="Enter")
+    send();
+
+    if(e.key.length===1)
+    keySound();
 });
 
-document.getElementById("clear").onclick=()=>{
+document
+.getElementById("clear")
+.onclick=()=>{
+
     remove(messagesRef);
+
     messages.innerHTML="";
 };
 
@@ -298,30 +441,45 @@ document.getElementById("clear").onclick=()=>{
 onChildAdded(messagesRef,(snap)=>{
 
 const msg=snap.val();
-const current=username.toLowerCase();
+
+const current=
+username.toLowerCase();
 
 /* PRIVATE */
+
 if(msg.private){
 
-    const isSender=msg.name===username;
-    const isReceiver=msg.to===current;
+    const isSender=
+    msg.name===username;
 
-    if(!isSender&&!isReceiver) return;
+    const isReceiver=
+    msg.to===current;
 
-    let leftName,rightName;
+    if(!isSender&&!isReceiver)
+    return;
+
+    let leftName;
+    let rightName;
 
     if(isSender){
+
         leftName="You";
         rightName=msg.to;
+
     } else {
+
         leftName=msg.name;
         rightName="You";
     }
 
     createMessage(
+
         `${leftName} --> ${rightName}`,
+
         msg.text,
+
         msg.time,
+
         hashColor(msg.name)
     );
 
@@ -329,11 +487,18 @@ if(msg.private){
 }
 
 /* PUBLIC */
+
 createMessage(
-msg.name,
-msg.text,
-msg.time,
-hashColor(msg.userId||msg.name)
+
+    msg.name,
+
+    msg.text,
+
+    msg.time,
+
+    hashColor(
+        msg.userId||msg.name
+    )
 );
 
 });
