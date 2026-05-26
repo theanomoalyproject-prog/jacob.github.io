@@ -103,6 +103,10 @@ button{
     border:1px solid #333;
 }
 
+.ownerTag{
+    color:gold;
+    font-weight:bold;
+}
 </style>
 </head>
 
@@ -179,6 +183,9 @@ let username = getCookie("username") || "anon";
 let userColor = getCookie("userColor") || null;
 let userId = getCookie("userId") || Math.random().toString(36).slice(2,10);
 
+/* OWNER STATE */
+let isOwner = getCookie("isOwner") === "true";
+
 if(!userColor){
 userColor = hashColor(username);
 setCookie("userColor",userColor,365);
@@ -195,7 +202,7 @@ timestamp:now.getTime()
 };
 }
 
-/* COLOR GENERATOR */
+/* COLOR */
 function hashColor(str){
 let h=0;
 for(let i=0;i<str.length;i++){
@@ -228,7 +235,7 @@ div.appendChild(left);
 div.appendChild(right);
 
 messages.appendChild(div);
-messages.scrollTop=messages.scrollHeight;
+messages.scrollTop = messages.scrollHeight;
 
 textSpan.textContent=text;
 }
@@ -242,8 +249,17 @@ div.className="msg";
 const left=document.createElement("div");
 
 const nameSpan=document.createElement("span");
-nameSpan.textContent=`<${name}> `;
-nameSpan.style.color=color || hashColor(name);
+
+/* OWNER TAG */
+let displayName = name;
+if(isOwner && name === username){
+displayName = "[OWNER] " + name;
+nameSpan.style.color = "gold";
+} else {
+nameSpan.style.color = color || hashColor(name);
+}
+
+nameSpan.textContent = `<${displayName}> `;
 
 const textSpan=document.createElement("span");
 
@@ -266,7 +282,7 @@ div.appendChild(left);
 div.appendChild(right);
 
 messages.appendChild(div);
-messages.scrollTop=messages.scrollHeight;
+messages.scrollTop = messages.scrollHeight;
 
 if(text) textSpan.textContent=text;
 }
@@ -303,12 +319,25 @@ systemMessage("Username updated");
 return true;
 }
 
+/* ?proveownership */
+if(cmd==="proveownership"){
+const arg = parts[1];
+
+if(arg === "iamowner"){
+isOwner = true;
+setCookie("isOwner","true",365);
+systemMessage("Ownership verified");
+} else {
+systemMessage("Error: invalid ownership key");
+}
+return true;
+}
+
 /* ?help */
 if(cmd==="help"){
 systemMessage("?name <name>\n?help");
 return true;
 }
-
 /* UNKNOWN */
 systemMessage(`Error: command not found "?${cmd}"`);
 return true;
