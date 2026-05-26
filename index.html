@@ -1,1 +1,429 @@
-hello
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+html,body{
+    margin:0;
+    background:black;
+    font-family:"Courier New",monospace;
+    overflow:hidden;
+}
+
+#messages{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    bottom:90px;
+    overflow-y:auto;
+    padding:10px;
+    color:white;
+}
+
+.msg{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:10px;
+    gap:10px;
+}
+
+#inputWrap{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    height:90px;
+    background:#050505;
+    border-top:1px solid #222;
+    display:flex;
+    align-items:center;
+}
+
+#input{
+    flex:1;
+    height:100%;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:#00ff66;
+    font-family:"Courier New",monospace;
+    font-size:16px;
+    padding:10px;
+    box-sizing:border-box;
+}
+
+/* CAMERA */
+#uploadBtn{
+    width:60px;
+    height:60px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    margin-right:10px;
+}
+
+#uploadBtn svg{
+    width:26px;
+    height:26px;
+    stroke:#00ff66;
+    fill:none;
+    stroke-width:1.6;
+}
+
+#imageUpload{
+    display:none;
+}
+
+button{
+    height:90px;
+    width:120px;
+    border:none;
+    font-family:"Courier New",monospace;
+    cursor:pointer;
+}
+
+#send{
+    background:#00aa44;
+    color:white;
+}
+
+#clear{
+    background:#aa0000;
+    color:white;
+}
+
+.chatImage{
+    margin-top:8px;
+    max-width:320px;
+    border:1px solid #333;
+}
+
+.ownerTag{
+    color:gold;
+    font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<div id="messages"></div>
+
+<div id="inputWrap">
+
+<label id="uploadBtn">
+<svg viewBox="0 0 24 24">
+<path d="M9 4l2 2h4l2-2h3v18H6V4h3z"/>
+<circle cx="12" cy="13" r="3"/>
+</svg>
+<input type="file" id="imageUpload" accept="image/*">
+</label>
+
+<input id="input" autocomplete="off">
+
+<button id="send">SEND</button>
+<button id="clear">CLEAR</button>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+import {
+getDatabase,
+ref,
+push,
+onChildAdded,
+remove
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
+authDomain: "jacob-chat.firebaseapp.com",
+databaseURL: "https://jacob-chat-default-rtdb.europe-west1.firebasedatabase.app",
+projectId: "jacob-chat",
+storageBucket: "jacob-chat.firebasestorage.app",
+messagingSenderId: "554355410181",
+appId: "1:554355410181:web:250c29e43f29cfb8b4e36c"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const messagesRef = ref(db,"messages");
+
+/* CLOUD */
+const CLOUD_NAME = "dximojchf";
+const UPLOAD_PRESET = "chatimages";
+
+/* COOKIE SYSTEM */
+function setCookie(name,value,days){
+let exp="";
+if(days){
+const d=new Date();
+d.setTime(d.getTime()+days*86400000);
+exp="; expires="+d.toUTCString();
+}
+document.cookie=name+"="+value+exp+"; path=/";
+}
+
+function getCookie(name){
+return document.cookie
+.split("; ")
+.find(r=>r.startsWith(name+"="))
+?.split("=")[1];
+}
+
+/* USER STATE */
+let username = getCookie("username") || "anon";
+let userColor = getCookie("userColor") || null;
+let userId = getCookie("userId") || Math.random().toString(36).slice(2,10);
+
+/* OWNER STATE */
+let isOwner = getCookie("isOwner") === "true";
+
+if(!userColor){
+userColor = hashColor(username);
+setCookie("userColor",userColor,365);
+}
+
+setCookie("userId",userId,365);
+
+/* TIME */
+function time(){
+const now=new Date();
+return {
+clock:now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
+timestamp:now.getTime()
+};
+}
+
+/* COLOR */
+function hashColor(str){
+let h=0;
+for(let i=0;i<str.length;i++){
+h=str.charCodeAt(i)+((h<<5)-h);
+}
+return `hsl(${h%360},80%,60%)`;
+}
+
+/* SYSTEM MESSAGE */
+function systemMessage(text){
+const div=document.createElement("div");
+div.className="msg";
+
+const left=document.createElement("div");
+
+const nameSpan=document.createElement("span");
+nameSpan.textContent="<system> ";
+nameSpan.style.color="red";
+
+const textSpan=document.createElement("span");
+
+left.appendChild(nameSpan);
+left.appendChild(textSpan);
+
+const right=document.createElement("div");
+right.style.color="gray";
+right.textContent=time().clock;
+
+div.appendChild(left);
+div.appendChild(right);
+
+messages.appendChild(div);
+messages.scrollTop = messages.scrollHeight;
+
+textSpan.textContent=text;
+}
+
+/* MESSAGE */
+function createMessage(name,text,clock,image,color){
+
+const div=document.createElement("div");
+div.className="msg";
+
+const left=document.createElement("div");
+
+const nameSpan=document.createElement("span");
+
+/* OWNER TAG */
+let displayName = name;
+if(isOwner && name === username){
+displayName = "[OWNER] " + name;
+nameSpan.style.color = "gold";
+} else {
+nameSpan.style.color = color || hashColor(name);
+}
+
+nameSpan.textContent = `<${displayName}> `;
+
+const textSpan=document.createElement("span");
+
+left.appendChild(nameSpan);
+left.appendChild(textSpan);
+
+if(image){
+const img=document.createElement("img");
+img.src=image;
+img.className="chatImage";
+left.appendChild(document.createElement("br"));
+left.appendChild(img);
+}
+
+const right=document.createElement("div");
+right.style.color="gray";
+right.textContent=clock;
+
+div.appendChild(left);
+div.appendChild(right);
+
+messages.appendChild(div);
+messages.scrollTop = messages.scrollHeight;
+
+if(text) textSpan.textContent=text;
+}
+
+/* COMMANDS */
+function handleCommand(raw){
+
+if(!raw.startsWith("?")) return false;
+
+const parts = raw.trim().split(" ");
+const cmd = parts[0].slice(1).toLowerCase();
+
+/* ?name */
+if(cmd==="name"){
+const newName = parts.slice(1).join(" ");
+
+if(!newName){
+systemMessage("Error: missing name");
+return true;
+}
+
+if(newName.includes(" ")){
+systemMessage("Error: name cannot contain spaces");
+return true;
+}
+
+username = newName;
+userColor = hashColor(username);
+
+setCookie("username",username,365);
+setCookie("userColor",userColor,365);
+
+systemMessage("Username updated");
+return true;
+}
+
+/* ?proveownership */
+if(cmd==="proveownership"){
+const arg = parts[1];
+
+if(arg === "iamowner"){
+isOwner = true;
+setCookie("isOwner","true",365);
+systemMessage("Ownership verified");
+} else {
+systemMessage("Error: invalid ownership key");
+}
+return true;
+}
+
+/* ?help */
+if(cmd==="help"){
+systemMessage("?name <name>\n?help");
+return true;
+}
+/* UNKNOWN */
+systemMessage(`Error: command not found "?${cmd}"`);
+return true;
+}
+
+/* SEND */
+function send(){
+
+const raw=input.value.trim();
+if(!raw) return;
+
+if(handleCommand(raw)){
+input.value="";
+return;
+}
+
+const t=time();
+
+push(messagesRef,{
+text:raw,
+name:username,
+userId,
+userColor,
+clock:t.clock,
+timestamp:t.timestamp
+});
+
+input.value="";
+}
+
+input.addEventListener("keydown",(e)=>{
+if(e.key==="Enter") send();
+});
+
+/* IMAGE UPLOAD */
+imageUpload.addEventListener("change",async(e)=>{
+const file=e.target.files[0];
+if(!file) return;
+
+const form=new FormData();
+form.append("file",file);
+form.append("upload_preset",UPLOAD_PRESET);
+
+const res=await fetch(
+`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+{method:"POST",body:form}
+);
+
+const data=await res.json();
+
+const t=time();
+
+push(messagesRef,{
+text:"",
+image:data.secure_url,
+name:username,
+userId,
+userColor,
+clock:t.clock,
+timestamp:t.timestamp
+});
+});
+
+/* CLEAR */
+document.getElementById("clear").onclick=()=>{
+remove(messagesRef);
+messages.innerHTML="";
+};
+
+/* SEND BUTTON */
+document.getElementById("send").onclick=send;
+
+/* RENDER */
+onChildAdded(messagesRef,(snap)=>{
+const msg=snap.val();
+
+createMessage(
+msg.name,
+msg.text,
+msg.clock,
+msg.image||null,
+msg.userColor
+);
+});
+
+</script>
+
+</body>
+</html>
