@@ -22,10 +22,11 @@ height:50px;
 background:#111;
 display:flex;
 align-items:center;
+justify-content:space-between;
 padding:0 10px;
-gap:10px;
 box-sizing:border-box;
 z-index:10;
+color:white;
 }
 
 button{
@@ -50,8 +51,8 @@ right:0;
 <body>
 
 <div id="topBar">
-<button onclick="location.href='index.html'">← BACK</button>
-<div style="color:white;">VOICE CALL</div>
+<button onclick="goBack()">← BACK</button>
+<div id="roomLabel"></div>
 </div>
 
 <div id="call"></div>
@@ -59,21 +60,29 @@ right:0;
 <script src="https://meet.jit.si/external_api.js"></script>
 
 <script>
+/* GET ROOM FROM URL */
 const room = location.hash.replace("#","") || "default-room";
 
-const api = new JitsiMeetExternalAPI("meet.jit.si", {
-roomName: room,
-parentNode: document.getElementById("call"),
-width: "100%",
-height: "100%",
-configOverwrite: {
-startWithVideoMuted: true,
-startWithAudioMuted: false
-},
-interfaceConfigOverwrite: {
-SHOW_JITSI_WATERMARK: false,
-SHOW_WATERMARK_FOR_GUESTS: false
+document.getElementById("roomLabel").textContent = room;
+
+/* BACK BUTTON */
+function goBack(){
+window.location.href = "index.html";
 }
+
+/* CREATE JITSI CALL */
+const api = new JitsiMeetExternalAPI("meet.jit.si", {
+    roomName: room,
+    parentNode: document.getElementById("call"),
+    width: "100%",
+    height: "100%",
+    configOverwrite: {
+        startWithVideoMuted: true
+    },
+    interfaceConfigOverwrite: {
+        SHOW_JITSI_WATERMARK: false,
+        SHOW_WATERMARK_FOR_GUESTS: false
+    }
 });
 </script>
 
