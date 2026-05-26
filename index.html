@@ -27,48 +27,64 @@ html,body{
     display:flex;
     justify-content:space-between;
     align-items:flex-start;
-    margin-bottom:6px;
+    margin-bottom:10px;
     gap:10px;
     line-height:1.3;
 }
 
-#input{
+#inputWrap{
     position:fixed;
     bottom:0;
     left:0;
-    width:70%;
+    right:0;
     height:90px;
     background:#050505;
     border-top:1px solid #222;
+}
+
+#input{
+    width:100%;
+    height:100%;
+    background:transparent;
+    border:none;
     outline:none;
     color:#00ff66;
     font-family:"Courier New",monospace;
     font-size:16px;
-    padding:10px;
+    padding:10px 60px 10px 10px;
     box-sizing:border-box;
     caret-color:#00ff66;
 }
 
-button{
-    position:fixed;
-    bottom:0;
-    height:90px;
-    border:none;
-    font-family:"Courier New",monospace;
+#uploadBtn{
+    position:absolute;
+    right:15px;
+    top:50%;
+    transform:translateY(-50%);
+    font-size:26px;
     cursor:pointer;
+    user-select:none;
+    color:#00ff66;
 }
 
-#send{
-    right:15%;
-    width:15%;
-    background:#00aa44;
+#imageUpload{
+    display:none;
 }
 
-#clear{
-    right:0;
-    width:15%;
-    background:#aa0000;
-    color:white;
+button{
+    display:none;
+}
+
+.chatImage{
+    margin-top:8px;
+    max-width:320px;
+    max-height:320px;
+    border:1px solid #333;
+}
+
+.ownerTag{
+    color:gold;
+    font-weight:bold;
 }
 </style>
 </head>
@@ -77,22 +93,19 @@ button{
 
 <div id="messages"></div>
 
+<div id="inputWrap">
 <input id="input" autocomplete="off">
 
-<button id="send">SEND</button>
-<button id="clear">CLEAR</button>
+<label id="uploadBtn">
+📷
+<input type="file" id="imageUpload" accept="image/*">
+</label>
+</div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-
-import {
-getDatabase,
-ref,
-push,
-onChildAdded,
-remove
-} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, remove } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
 apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
@@ -108,399 +121,179 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const messagesRef = ref(db,"messages");
 
+/* CLOUDINARY */
+const CLOUD_NAME = "dximojchf";
+const UPLOAD_PRESET = "chatimages";
+
+/* ELEMENTS */
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
+const imageUpload = document.getElementById("imageUpload");
 
-/* ---------------- COOKIE SYSTEM ---------------- */
-
-function setCookie(name,value,days){
-    let expires="";
-
-    if(days){
-        const d=new Date();
-
-        d.setTime(
-            d.getTime()+(days*24*60*60*1000)
-        );
-
-        expires="; expires="+d.toUTCString();
-    }
-
-    document.cookie=
-        name+"="+value+expires+"; path=/";
+/* COOKIE SYSTEM */
+function setCookie(n,v,d){
+let e="";
+if(d){
+const t=new Date();
+t.setTime(t.getTime()+d*86400000);
+e="; expires="+t.toUTCString();
+}
+document.cookie=n+"="+v+e+"; path=/";
 }
 
-function getCookie(name){
-
-    const cookies=document.cookie.split("; ");
-
-    for(let c of cookies){
-
-        const [k,v]=c.split("=");
-
-        if(k===name) return v;
-    }
-
-    return null;
-}
-
-let userId=getCookie("userId");
-
-if(!userId){
-
-    userId=
-        Math.random()
-        .toString(36)
-        .substring(2,10);
-
-    setCookie("userId",userId,365);
+function getCookie(n){
+return document.cookie.split("; ").find(r=>r.startsWith(n+"="))?.split("=")[1];
 }
 
 let username=getCookie("username")||"anon";
+let userId=getCookie("userId")||Math.random().toString(36).slice(2,10);
 
-/* ---------------- AUDIO ---------------- */
+setCookie("userId",userId,365);
 
-const audioCtx =
-new (
-window.AudioContext ||
-window.webkitAudioContext
-)();
-
-function playTypeSound(base=180,volume=0.02){
-
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
-
-    osc.type="square";
-
-    osc.frequency.setValueAtTime(
-        base+Math.random()*120,
-        audioCtx.currentTime
-    );
-
-    gain.gain.setValueAtTime(
-        volume,
-        audioCtx.currentTime
-    );
-
-    gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        audioCtx.currentTime+0.04
-    );
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    osc.start();
-
-    osc.stop(
-        audioCtx.currentTime+0.04
-    );
-}
-
-function keySound(){
-    playTypeSound(120,0.03);
-}
-
-window.addEventListener(
-"click",
-()=>audioCtx.resume(),
-{once:true}
-);
-
-window.addEventListener(
-"keydown",
-()=>audioCtx.resume(),
-{once:true}
-);
-
-/* ---------------- HELPERS ---------------- */
-
+/* HELPERS */
 function time(){
-
-    return new Date().toLocaleTimeString(
-        [],
-        {
-            hour:"2-digit",
-            minute:"2-digit"
-        }
-    );
+const now=new Date();
+return {
+clock:now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
+timestamp:now.getTime()
+};
 }
 
 function hashColor(str){
-
-    let hash=0;
-
-    for(let i=0;i<str.length;i++){
-
-        hash=
-        str.charCodeAt(i)+
-        ((hash<<5)-hash);
-    }
-
-    return `hsl(${hash%360},80%,60%)`;
+let h=0;
+for(let i=0;i<str.length;i++) h=str.charCodeAt(i)+((h<<5)-h);
+return `hsl(${h%360},80%,60%)`;
 }
 
-/* TYPEWRITER */
-
-function typeText(el,text,speed=32){
-
-    let i=0;
-
-    function step(){
-
-        if(i<text.length){
-
-            el.textContent+=text[i++];
-
-            playTypeSound(220,0.015);
-
-            setTimeout(step,speed);
-        }
-    }
-
-    step();
+/* TYPE */
+function typeText(el,text,speed=25){
+let i=0;
+function step(){
+if(i<text.length){
+el.textContent+=text[i++];
+setTimeout(step,speed);
+}
+}
+step();
 }
 
-/* ---------------- MESSAGE ---------------- */
+/* MESSAGE */
+function createMessage(name,text,clock,date,color,image){
+const div=document.createElement("div");
+div.className="msg";
 
-function createMessage(
-    name,
-    text,
-    timeText,
-    color="#00ff66"
-){
+const left=document.createElement("div");
 
-    const div=document.createElement("div");
-    div.className="msg";
+const nameSpan=document.createElement("span");
+nameSpan.textContent=`<${name}> `;
+nameSpan.style.color=color;
 
-    const left=document.createElement("div");
+const textSpan=document.createElement("span");
 
-    const nameSpan=document.createElement("span");
+left.appendChild(nameSpan);
+left.appendChild(textSpan);
 
-    nameSpan.textContent=`<${name}> `;
-    nameSpan.style.color=color;
-
-    const textSpan=document.createElement("span");
-
-    left.appendChild(nameSpan);
-    left.appendChild(textSpan);
-
-    const right=document.createElement("div");
-
-    right.style.color="gray";
-    right.textContent=timeText;
-
-    div.appendChild(left);
-    div.appendChild(right);
-
-    messages.appendChild(div);
-
-    messages.scrollTop=
-    messages.scrollHeight;
-
-    typeText(textSpan,text,32);
+if(image){
+const img=document.createElement("img");
+img.src=image;
+img.className="chatImage";
+left.appendChild(document.createElement("br"));
+left.appendChild(img);
 }
 
-/* ---------------- COMMANDS ---------------- */
+const right=document.createElement("div");
+right.style.color="gray";
+right.innerHTML=`${clock}<br>${date}`;
 
-function handleCommands(text){
+div.appendChild(left);
+div.appendChild(right);
 
-/* NAME */
+messages.appendChild(div);
+messages.scrollTop=messages.scrollHeight;
 
-if(text.startsWith("?name ")){
-
-    const newName=
-    text.replace("?name ","").trim();
-
-    /* SPACE CHECK */
-    if(newName.includes(" ")){
-
-        createMessage(
-            "system",
-            "Error: name cannot contain a space",
-            time(),
-            "red"
-        );
-
-        return true;
-    }
-
-    username=newName||"anon";
-
-    setCookie(
-        "username",
-        username,
-        365
-    );
-
-    return true;
+if(text) typeText(textSpan,text);
 }
 
-/* HELP */
+/* DATE */
+function formatDate(ts){
+const now=new Date();
+const d=new Date(ts);
 
-if(text==="?help"){
+const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+const yesterday=new Date(today);
+yesterday.setDate(today.getDate()-1);
 
-    createMessage(
-        "system",
+const msgDay=new Date(d.getFullYear(),d.getMonth(),d.getDate());
 
-        "?name <name> - sets your username\n"+
-        "?msg <user> message - sends a private message (only you + them can see it)\n"+
-        "?help - shows this help menu",
-
-        time(),
-        "gray"
-    );
-
-    return true;
+if(msgDay.getTime()===today.getTime()) return "Today";
+if(msgDay.getTime()===yesterday.getTime()) return "Yesterday";
+return d.toLocaleDateString("en-GB");
 }
 
-/* PRIVATE MESSAGE */
-
-if(text.startsWith("?msg ")){
-
-    const parts=text.split(" ");
-
-    const target=
-    parts[1]?.toLowerCase();
-
-    const msg=
-    parts.slice(2).join(" ");
-
-    if(!target||!msg)
-    return true;
-
-    push(messagesRef,{
-
-        text:msg,
-        name:username,
-        userId:userId,
-        to:target,
-        time:time(),
-        private:true
-    });
-
-    return true;
-}
-
-return false;
-}
-
-/* ---------------- SEND ---------------- */
-
+/* SEND */
 function send(){
+const text=input.value.trim();
+if(!text) return;
 
-    const text=input.value.trim();
+const t=time();
 
-    if(!text) return;
-
-    if(handleCommands(text)){
-
-        input.value="";
-        return;
-    }
-
-    push(messagesRef,{
-
-        text,
-        name:username,
-        userId:userId,
-        time:time(),
-        private:false
-    });
-
-    input.value="";
-}
-
-document
-.getElementById("send")
-.onclick=send;
-
-input.addEventListener(
-"keydown",
-(e)=>{
-
-    if(e.key==="Enter")
-    send();
-
-    if(e.key.length===1)
-    keySound();
+push(messagesRef,{
+text,
+name:username,
+userId,
+clock:t.clock,
+timestamp:t.timestamp
 });
 
-document
-.getElementById("clear")
-.onclick=()=>{
-
-    remove(messagesRef);
-
-    messages.innerHTML="";
-};
-
-/* ---------------- RENDER ---------------- */
-
-onChildAdded(messagesRef,(snap)=>{
-
-const msg=snap.val();
-
-const current=
-username.toLowerCase();
-
-/* PRIVATE */
-
-if(msg.private){
-
-    const isSender=
-    msg.name===username;
-
-    const isReceiver=
-    msg.to===current;
-
-    if(!isSender&&!isReceiver)
-    return;
-
-    let leftName;
-    let rightName;
-
-    if(isSender){
-
-        leftName="You";
-        rightName=msg.to;
-
-    } else {
-
-        leftName=msg.name;
-        rightName="You";
-    }
-
-    createMessage(
-
-        `${leftName} --> ${rightName}`,
-
-        msg.text,
-
-        msg.time,
-
-        hashColor(msg.name)
-    );
-
-    return;
+input.value="";
 }
 
-/* PUBLIC */
+input.addEventListener("keydown",(e)=>{
+if(e.key==="Enter") send();
+});
 
-createMessage(
+/* IMAGE UPLOAD */
+imageUpload.addEventListener("change",async(e)=>{
+const file=e.target.files[0];
+if(!file) return;
 
-    msg.name,
+const formData=new FormData();
+formData.append("file",file);
+formData.append("upload_preset",UPLOAD_PRESET);
 
-    msg.text,
-
-    msg.time,
-
-    hashColor(
-        msg.userId||msg.name
-    )
+const res=await fetch(
+`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+{method:"POST",body:formData}
 );
 
+const data=await res.json();
+
+const t=time();
+
+push(messagesRef,{
+text:"",
+image:data.secure_url,
+name:username,
+userId,
+clock:t.clock,
+timestamp:t.timestamp
+});
+
+imageUpload.value="";
+});
+
+/* RENDER */
+onChildAdded(messagesRef,(snap)=>{
+const msg=snap.val();
+
+createMessage(
+msg.name,
+msg.text,
+msg.clock,
+formatDate(msg.timestamp),
+hashColor(msg.userId||msg.name),
+msg.image||null
+);
 });
 
 </script>
