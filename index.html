@@ -29,7 +29,6 @@ html,body{
     align-items:flex-start;
     margin-bottom:10px;
     gap:10px;
-    line-height:1.3;
 }
 
 #inputWrap{
@@ -40,10 +39,12 @@ html,body{
     height:90px;
     background:#050505;
     border-top:1px solid #222;
+    display:flex;
+    align-items:center;
 }
 
 #input{
-    width:100%;
+    flex:1;
     height:100%;
     background:transparent;
     border:none;
@@ -53,37 +54,55 @@ html,body{
     font-size:16px;
     padding:10px;
     box-sizing:border-box;
-    caret-color:#00ff66;
 }
 
+/* CAMERA */
 #uploadBtn{
-    position:absolute;
-    right:15px;
-    top:50%;
-    transform:translateY(-50%);
-    font-size:26px;
+    width:60px;
+    height:60px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
     cursor:pointer;
-    user-select:none;
-    color:#00ff66;
+    margin-right:10px;
+}
+
+#uploadBtn svg{
+    width:26px;
+    height:26px;
+    stroke:#00ff66;
+    fill:none;
+    stroke-width:1.6;
 }
 
 #imageUpload{
     display:none;
 }
 
+button{
+    height:90px;
+    width:120px;
+    border:none;
+    font-family:"Courier New",monospace;
+    cursor:pointer;
+}
+
+#send{
+    background:#00aa44;
+    color:white;
+}
+
+#clear{
+    background:#aa0000;
+    color:white;
+}
+
 .chatImage{
     margin-top:8px;
     max-width:320px;
-    max-height:320px;
     border:1px solid #333;
 }
 
-.ownerTag{
-    color:gold;
-    font-weight:bold;
-}
-
-button{display:none;}
 </style>
 </head>
 
@@ -92,18 +111,32 @@ button{display:none;}
 <div id="messages"></div>
 
 <div id="inputWrap">
-<input id="input" autocomplete="off">
 
 <label id="uploadBtn">
-📷
+<svg viewBox="0 0 24 24">
+<path d="M9 4l2 2h4l2-2h3v18H6V4h3z"/>
+<circle cx="12" cy="13" r="3"/>
+</svg>
 <input type="file" id="imageUpload" accept="image/*">
 </label>
+
+<input id="input" autocomplete="off">
+
+<button id="send">SEND</button>
+<button id="clear">CLEAR</button>
+
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+import {
+getDatabase,
+ref,
+push,
+onChildAdded,
+remove
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
 apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
@@ -119,35 +152,41 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const messagesRef = ref(db,"messages");
 
-/* CLOUDINARY */
+/* CLOUD */
 const CLOUD_NAME = "dximojchf";
 const UPLOAD_PRESET = "chatimages";
 
-/* ELEMENTS */
-const messages = document.getElementById("messages");
-const input = document.getElementById("input");
-const imageUpload = document.getElementById("imageUpload");
-
-/* COOKIE */
-function getCookie(n){
-return document.cookie.split("; ").find(r=>r.startsWith(n+"="))?.split("=")[1];
+/* COOKIE SYSTEM */
+function setCookie(name,value,days){
+let exp="";
+if(days){
+const d=new Date();
+d.setTime(d.getTime()+days*86400000);
+exp="; expires="+d.toUTCString();
+}
+document.cookie=name+"="+value+exp+"; path=/";
 }
 
-function setCookie(n,v,d){
-let e="";
-if(d){
-const t=new Date();
-t.setTime(t.getTime()+d*86400000);
-e="; expires="+t.toUTCString();
-}
-document.cookie=n+"="+v+e+"; path=/";
+function getCookie(name){
+return document.cookie
+.split("; ")
+.find(r=>r.startsWith(name+"="))
+?.split("=")[1];
 }
 
-let username=getCookie("username")||"anon";
-let userId=getCookie("userId")||Math.random().toString(36).slice(2,10);
+/* USER STATE */
+let username = getCookie("username") || "anon";
+let userColor = getCookie("userColor") || null;
+let userId = getCookie("userId") || Math.random().toString(36).slice(2,10);
+
+if(!userColor){
+userColor = hashColor(username);
+setCookie("userColor",userColor,365);
+}
+
 setCookie("userId",userId,365);
 
-/* HELPERS */
+/* TIME */
 function time(){
 const now=new Date();
 return {
@@ -156,41 +195,47 @@ timestamp:now.getTime()
 };
 }
 
-function formatDate(ts){
-const now=new Date();
-const d=new Date(ts);
-
-const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-const yesterday=new Date(today);
-yesterday.setDate(today.getDate()-1);
-
-const msgDay=new Date(d.getFullYear(),d.getMonth(),d.getDate());
-
-if(msgDay.getTime()===today.getTime()) return "Today";
-if(msgDay.getTime()===yesterday.getTime()) return "Yesterday";
-return d.toLocaleDateString("en-GB");
-}
-
+/* COLOR GENERATOR */
 function hashColor(str){
 let h=0;
-for(let i=0;i<str.length;i++) h=str.charCodeAt(i)+((h<<5)-h);
+for(let i=0;i<str.length;i++){
+h=str.charCodeAt(i)+((h<<5)-h);
+}
 return `hsl(${h%360},80%,60%)`;
 }
 
-/* TYPE */
-function typeText(el,text,speed=25){
-let i=0;
-function step(){
-if(i<text.length){
-el.textContent+=text[i++];
-setTimeout(step,speed);
-}
-}
-step();
+/* SYSTEM MESSAGE */
+function systemMessage(text){
+const div=document.createElement("div");
+div.className="msg";
+
+const left=document.createElement("div");
+
+const nameSpan=document.createElement("span");
+nameSpan.textContent="<system> ";
+nameSpan.style.color="red";
+
+const textSpan=document.createElement("span");
+
+left.appendChild(nameSpan);
+left.appendChild(textSpan);
+
+const right=document.createElement("div");
+right.style.color="gray";
+right.textContent=time().clock;
+
+div.appendChild(left);
+div.appendChild(right);
+
+messages.appendChild(div);
+messages.scrollTop=messages.scrollHeight;
+
+textSpan.textContent=text;
 }
 
 /* MESSAGE */
-function createMessage(name,text,clock,date,color,image){
+function createMessage(name,text,clock,image,color){
+
 const div=document.createElement("div");
 div.className="msg";
 
@@ -198,7 +243,7 @@ const left=document.createElement("div");
 
 const nameSpan=document.createElement("span");
 nameSpan.textContent=`<${name}> `;
-nameSpan.style.color=color;
+nameSpan.style.color=color || hashColor(name);
 
 const textSpan=document.createElement("span");
 
@@ -215,7 +260,7 @@ left.appendChild(img);
 
 const right=document.createElement("div");
 right.style.color="gray";
-right.innerHTML=`${clock}<br>${date}`;
+right.textContent=clock;
 
 div.appendChild(left);
 div.appendChild(right);
@@ -223,20 +268,50 @@ div.appendChild(right);
 messages.appendChild(div);
 messages.scrollTop=messages.scrollHeight;
 
-if(text) typeText(textSpan,text);
+if(text) textSpan.textContent=text;
 }
 
-/* COMMAND ERROR */
-function commandError(cmd){
-const t=time();
+/* COMMANDS */
+function handleCommand(raw){
 
-push(messagesRef,{
-text:`<system> Error: command not found "?${cmd}"`,
-name:"system",
-userId:"system",
-clock:t.clock,
-timestamp:t.timestamp
-});
+if(!raw.startsWith("?")) return false;
+
+const parts = raw.trim().split(" ");
+const cmd = parts[0].slice(1).toLowerCase();
+
+/* ?name */
+if(cmd==="name"){
+const newName = parts.slice(1).join(" ");
+
+if(!newName){
+systemMessage("Error: missing name");
+return true;
+}
+
+if(newName.includes(" ")){
+systemMessage("Error: name cannot contain spaces");
+return true;
+}
+
+username = newName;
+userColor = hashColor(username);
+
+setCookie("username",username,365);
+setCookie("userColor",userColor,365);
+
+systemMessage("Username updated");
+return true;
+}
+
+/* ?help */
+if(cmd==="help"){
+systemMessage("?name <name>\n?help");
+return true;
+}
+
+/* UNKNOWN */
+systemMessage(`Error: command not found "?${cmd}"`);
+return true;
 }
 
 /* SEND */
@@ -245,34 +320,18 @@ function send(){
 const raw=input.value.trim();
 if(!raw) return;
 
-/* COMMAND CHECK */
-if(raw.startsWith("?")){
-
-const parts=raw.split(" ");
-const cmd=parts[0].replace("?","");
-
-const allowed=[
-"name",
-"msg",
-"help",
-"proveownership"
-];
-
-if(!allowed.includes(cmd)){
-commandError(raw.replace("?",""));
+if(handleCommand(raw)){
 input.value="";
 return;
 }
 
-}
-
-/* NORMAL MESSAGE */
 const t=time();
 
 push(messagesRef,{
 text:raw,
 name:username,
 userId,
+userColor,
 clock:t.clock,
 timestamp:t.timestamp
 });
@@ -307,12 +366,20 @@ text:"",
 image:data.secure_url,
 name:username,
 userId,
+userColor,
 clock:t.clock,
 timestamp:t.timestamp
 });
-
-imageUpload.value="";
 });
+
+/* CLEAR */
+document.getElementById("clear").onclick=()=>{
+remove(messagesRef);
+messages.innerHTML="";
+};
+
+/* SEND BUTTON */
+document.getElementById("send").onclick=send;
 
 /* RENDER */
 onChildAdded(messagesRef,(snap)=>{
@@ -322,9 +389,8 @@ createMessage(
 msg.name,
 msg.text,
 msg.clock,
-formatDate(msg.timestamp),
-hashColor(msg.userId||msg.name),
-msg.image||null
+msg.image||null,
+msg.userColor
 );
 });
 
