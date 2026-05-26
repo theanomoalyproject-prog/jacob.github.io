@@ -51,7 +51,7 @@ html,body{
     color:#00ff66;
     font-family:"Courier New",monospace;
     font-size:16px;
-    padding:10px 60px 10px 10px;
+    padding:10px;
     box-sizing:border-box;
     caret-color:#00ff66;
 }
@@ -71,10 +71,6 @@ html,body{
     display:none;
 }
 
-button{
-    display:none;
-}
-
 .chatImage{
     margin-top:8px;
     max-width:320px;
@@ -86,6 +82,8 @@ button{
     color:gold;
     font-weight:bold;
 }
+
+button{display:none;}
 </style>
 </head>
 
@@ -105,7 +103,7 @@ button{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, remove } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
 apiKey: "AIzaSyBE0_RBvPYFmeJ-tNaM3b75-qGPca4_m3I",
@@ -130,7 +128,11 @@ const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 const imageUpload = document.getElementById("imageUpload");
 
-/* COOKIE SYSTEM */
+/* COOKIE */
+function getCookie(n){
+return document.cookie.split("; ").find(r=>r.startsWith(n+"="))?.split("=")[1];
+}
+
 function setCookie(n,v,d){
 let e="";
 if(d){
@@ -141,13 +143,8 @@ e="; expires="+t.toUTCString();
 document.cookie=n+"="+v+e+"; path=/";
 }
 
-function getCookie(n){
-return document.cookie.split("; ").find(r=>r.startsWith(n+"="))?.split("=")[1];
-}
-
 let username=getCookie("username")||"anon";
 let userId=getCookie("userId")||Math.random().toString(36).slice(2,10);
-
 setCookie("userId",userId,365);
 
 /* HELPERS */
@@ -157,6 +154,21 @@ return {
 clock:now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
 timestamp:now.getTime()
 };
+}
+
+function formatDate(ts){
+const now=new Date();
+const d=new Date(ts);
+
+const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+const yesterday=new Date(today);
+yesterday.setDate(today.getDate()-1);
+
+const msgDay=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+
+if(msgDay.getTime()===today.getTime()) return "Today";
+if(msgDay.getTime()===yesterday.getTime()) return "Yesterday";
+return d.toLocaleDateString("en-GB");
 }
 
 function hashColor(str){
@@ -214,31 +226,51 @@ messages.scrollTop=messages.scrollHeight;
 if(text) typeText(textSpan,text);
 }
 
-/* DATE */
-function formatDate(ts){
-const now=new Date();
-const d=new Date(ts);
+/* COMMAND ERROR */
+function commandError(cmd){
+const t=time();
 
-const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-const yesterday=new Date(today);
-yesterday.setDate(today.getDate()-1);
-
-const msgDay=new Date(d.getFullYear(),d.getMonth(),d.getDate());
-
-if(msgDay.getTime()===today.getTime()) return "Today";
-if(msgDay.getTime()===yesterday.getTime()) return "Yesterday";
-return d.toLocaleDateString("en-GB");
+push(messagesRef,{
+text:`<system> Error: command not found "?${cmd}"`,
+name:"system",
+userId:"system",
+clock:t.clock,
+timestamp:t.timestamp
+});
 }
 
 /* SEND */
 function send(){
-const text=input.value.trim();
-if(!text) return;
 
+const raw=input.value.trim();
+if(!raw) return;
+
+/* COMMAND CHECK */
+if(raw.startsWith("?")){
+
+const parts=raw.split(" ");
+const cmd=parts[0].replace("?","");
+
+const allowed=[
+"name",
+"msg",
+"help",
+"proveownership"
+];
+
+if(!allowed.includes(cmd)){
+commandError(raw.replace("?",""));
+input.value="";
+return;
+}
+
+}
+
+/* NORMAL MESSAGE */
 const t=time();
 
 push(messagesRef,{
-text,
+text:raw,
 name:username,
 userId,
 clock:t.clock,
@@ -257,13 +289,13 @@ imageUpload.addEventListener("change",async(e)=>{
 const file=e.target.files[0];
 if(!file) return;
 
-const formData=new FormData();
-formData.append("file",file);
-formData.append("upload_preset",UPLOAD_PRESET);
+const form=new FormData();
+form.append("file",file);
+form.append("upload_preset",UPLOAD_PRESET);
 
 const res=await fetch(
 `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-{method:"POST",body:formData}
+{method:"POST",body:form}
 );
 
 const data=await res.json();
